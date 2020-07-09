@@ -231,7 +231,7 @@ type GlobalSettings struct {
 
 var db* sql.DB;
 var settings *GlobalSettings;
-func CreateDBConn(prefix string) (*sql.DB, error) {
+func CreateDBConn() (*sql.DB, error) {
 	if db != nil {
 		return db, nil
 	}
