@@ -13,7 +13,6 @@ import (
 	"reflect"
 	"fmt"
 	"database/sql"
-	"encoding/json"
 	"regexp"
 	_ "github.com/go-sql-driver/mysql"
 	guuid "github.com/google/uuid"
@@ -233,29 +232,29 @@ type GlobalSettings struct {
 var db* sql.DB;
 var settings *GlobalSettings;
 
-func createAPIID(prefix string) string {
+func CreateAPIID(prefix string) string {
 	id := guuid.New()
 	return prefix + "-" + id.String()
 }
-func lookupBestCallRate(number string, typeRate string) *CallRate {
+func LookupBestCallRate(number string, typeRate string) *CallRate {
 	return &CallRate{ CallRate: 9.99 };
 }
-func handleInternalErr(msg string, err error, w http.ResponseWriter) {
+func HandleInternalErr(msg string, err error, w http.ResponseWriter) {
 	fmt.Printf(msg)
 	fmt.Println(err)
 	w.WriteHeader(http.StatusInternalServerError)
 }
-func calculateTTSCosts(length int) float64 {
+func CalculateTTSCosts(length int) float64 {
 	var result float64 = float64(length) * .000005
 	return result
 }
-func calculateSTTCosts(recordingLength float64) float64 {
+func CalculateSTTCosts(recordingLength float64) float64 {
 	// Google cloud bills .006 per 15 seconds
 	billable := recordingLength / 15
 	var result float64 = 0.006 * billable
 	return result
 }
-func getUserFromDB(id int) (*User, error) {
+func GetUserFromDB(id int) (*User, error) {
 	var userId int
 	var username string
 	var fname string
@@ -274,7 +273,7 @@ func getUserFromDB(id int) (*User, error) {
 
 	return &User{Id: userId, Username: username, FirstName: fname, LastName: lname, Email: email}, nil
 }
-func getWorkspaceFromDB(id int) (*Workspace, error) {
+func GetWorkspaceFromDB(id int) (*Workspace, error) {
 	var workspaceId int
 	var name string
 	var creatorId int
@@ -295,7 +294,7 @@ func getWorkspaceFromDB(id int) (*Workspace, error) {
 	return &Workspace{Id: workspaceId, Name: name, CreatorId: creatorId, OutboundMacroId: int(outboundMacroId.Int64), Plan: plan}, nil
 }
 
-func getRecordingSpace(id int) (int, error) {
+func GetRecordingSpace(id int) (int, error) {
 	var bytes int
 	row := db.QueryRow(`SELECT SUM(size) FROM recordings WHERE workspace_id=?`, id)
 
@@ -308,7 +307,7 @@ func getRecordingSpace(id int) (int, error) {
 	}
 	return bytes, nil
 }
-func getFaxCount(id int) (*int, error) {
+func GetFaxCount(id int) (*int, error) {
 	var count int
 	row := db.QueryRow(`SELECT COUNT(*) FROM faxes WHERE workspace_id=?`, id)
 
@@ -321,7 +320,7 @@ func getFaxCount(id int) (*int, error) {
 	}
 	return &count, nil
 }
-func getWorkspaceByDomain(domain string) (*Workspace, error) {
+func GetWorkspaceByDomain(domain string) (*Workspace, error) {
 	var workspaceId int
 	var name string
 	var byo bool
@@ -338,7 +337,7 @@ func getWorkspaceByDomain(domain string) (*Workspace, error) {
 	return &Workspace{Id: workspaceId, CreatorId: creatorId, Name: name, BYOEnabled: byo, IPWhitelistDisabled: ipWhitelist}, nil
 }
 
-func getWorkspaceParams(workspaceId int) (*[]WorkspaceParam, error) {
+func GetWorkspaceParams(workspaceId int) (*[]WorkspaceParam, error) {
 	// Execute the query
 	results, err := db.Query("SELECT `key`, `value` FROM workspace_params WHERE `workspace_id` = ?", workspaceId)
     if err != nil {
@@ -359,14 +358,14 @@ func getWorkspaceParams(workspaceId int) (*[]WorkspaceParam, error) {
 	return &params, nil;
 }
 
-func getUserByDomain(domain string) (*WorkspaceCreatorFullInfo, error) {
-	workspace, err := getWorkspaceByDomain( domain )
+func GetUserByDomain(domain string) (*WorkspaceCreatorFullInfo, error) {
+	workspace, err := GetWorkspaceByDomain( domain )
 	if err != nil {
 		return nil, err
 	}
 
 	// Execute the query
-	params, err  := getWorkspaceParams(workspace.Id)
+	params, err  := GetWorkspaceParams(workspace.Id)
     if err != nil {
 		return nil, err;
 	}
@@ -382,7 +381,7 @@ func getUserByDomain(domain string) (*WorkspaceCreatorFullInfo, error) {
 	return full, nil
 }
 
-func getRecordingFromDB(id int) (*Recording, error) {
+func GetRecordingFromDB(id int) (*Recording, error) {
 	var apiId string
 	var ready int
 	var size int
@@ -399,7 +398,7 @@ func getRecordingFromDB(id int) (*Recording, error) {
 	return &Recording{APIId: apiId, Id: id, Size: size}, nil
 }
 //todo move to microservice
-func getPlanRecordingLimit(workspace* Workspace) (int, error) {
+func GetPlanRecordingLimit(workspace* Workspace) (int, error) {
 	if workspace.Plan == "pay-as-you-go" {
 		return 1024, nil
 	} else if workspace.Plan == "starter" {
@@ -412,7 +411,7 @@ func getPlanRecordingLimit(workspace* Workspace) (int, error) {
 	return 0, nil
 }
 //todo move to microservice
-func getPlanFaxLimit(workspace* Workspace) (*int, error) {
+func GetPlanFaxLimit(workspace* Workspace) (*int, error) {
 	var res* int
 	if workspace.Plan == "pay-as-you-go" {
 		*res = 100
@@ -425,7 +424,7 @@ func getPlanFaxLimit(workspace* Workspace) (*int, error) {
 	}
 	return res, nil
 }
-func sendLogRoutineEmail(log* LogRoutine, user* User, workspace* Workspace) error {
+func SendLogRoutineEmail(log* LogRoutine, user* User, workspace* Workspace) error {
 	mg := mailgun.NewMailgun(os.Getenv("MAILGUN_DOMAIN"),os.Getenv("MAILGUN_API_KEY"))
 	m := mg.NewMessage(
 		"Lineblocs <monitor@lineblocs.com>",
@@ -459,23 +458,23 @@ func sendLogRoutineEmail(log* LogRoutine, user* User, workspace* Workspace) erro
 	return nil
 }
 
-func startLogRoutine(log* LogRoutine) (*string, error) {
+func StartLogRoutine(log* LogRoutine) (*string, error) {
 	var user* User;
 	var workspace* Workspace;
 
-    user, err := getUserFromDB(log.UserId)
+    user, err := GetUserFromDB(log.UserId)
 	if err != nil {
 		fmt.Printf("could not get user..")
 		return nil, err
 	}
 
-	workspace, err = getWorkspaceFromDB(log.WorkspaceId)
+	workspace, err = GetWorkspaceFromDB(log.WorkspaceId)
 	if err != nil {
 		fmt.Printf("could not get workspace..")
 		return nil, err
 	}
 	now := time.Now()
-	apiId := createAPIID("log")
+	apiId := CreateAPIID("log")
 	stmt, err := db.Prepare("INSERT INTO debugger_logs (`from`, `to`, `title`, `report`, `workspace_id`, `level`, `api_id`, `created_at`, `updated_at`) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ? )")
 
 	if err != nil {
@@ -497,11 +496,11 @@ func startLogRoutine(log* LogRoutine) (*string, error) {
 	}
 	logIdStr := strconv.FormatInt(logId, 10)
 
-	go sendLogRoutineEmail(log, user, workspace)
+	go SendLogRoutineEmail(log, user, workspace)
 
 	return &logIdStr, err
 }
-func checkRouteMatches(from string, to string, prefix string, prepend string, match string) (bool, error) {
+func CheckRouteMatches(from string, to string, prefix string, prepend string, match string) (bool, error) {
 	full := prefix + match
 	valid, err := regexp.MatchString(full, to)
 	if err != nil {
@@ -509,10 +508,10 @@ func checkRouteMatches(from string, to string, prefix string, prepend string, ma
 	}
 	return valid, err
 }
-func shouldUseProviderNext(name string, ipPrivate string) (bool, error) {
+func ShouldUseProviderNext(name string, ipPrivate string) (bool, error) {
 	return true, nil
 }
-func checkCIDRMatch(sourceIp string, fullIp string) (bool, error) {
+func CheckCIDRMatch(sourceIp string, fullIp string) (bool, error) {
 	_, net1, err :=  net.ParseCIDR(sourceIp + "/32")
 	if err != nil {
 		return false, err
@@ -524,7 +523,7 @@ func checkCIDRMatch(sourceIp string, fullIp string) (bool, error) {
 
 	return net2.Contains(net1.IP), nil
 }
-func checkPSTNIPWhitelist(did string, sourceIp string) (bool, error) {
+func CheckPSTNIPWhitelist(did string, sourceIp string) (bool, error) {
 	results, err := db.Query(`SELECT 
 	sip_providers_whitelist_ips.ip_address, 
 	sip_providers_whitelist_ips.ip_address_range
@@ -546,7 +545,7 @@ func checkPSTNIPWhitelist(did string, sourceIp string) (bool, error) {
 
 		}
 		fullIp := ipAddr + ipAddrRange
-		match, err := checkCIDRMatch(sourceIp, fullIp) 
+		match, err := CheckCIDRMatch(sourceIp, fullIp) 
 		if err != nil {
 		  fmt.Printf("error matching CIDR source %s, full %s\r\n", sourceIp, fullIp)
 		  continue
@@ -557,7 +556,7 @@ func checkPSTNIPWhitelist(did string, sourceIp string) (bool, error) {
 	}
 	return false, nil
 }
-func checkBYOPSTNIPWhitelist(did string, sourceIp string) (bool, error) {
+func CheckBYOPSTNIPWhitelist(did string, sourceIp string) (bool, error) {
 	results, err := db.Query(`SELECT 
 	byo_carriers_ips.ip,
 	byo_carriers_ips.range
@@ -578,7 +577,7 @@ func checkBYOPSTNIPWhitelist(did string, sourceIp string) (bool, error) {
 			return false, err
 		}
 		fullIp := ipAddr + ipAddrRange
-		match, err := checkCIDRMatch(sourceIp, fullIp) 
+		match, err := CheckCIDRMatch(sourceIp, fullIp) 
 		if err != nil {
 		  fmt.Printf("error matching CIDR source %s, full %s\r\n", sourceIp, fullIp)
 		  continue
@@ -590,7 +589,7 @@ func checkBYOPSTNIPWhitelist(did string, sourceIp string) (bool, error) {
 	return false, nil
 }
 
-func finishValidation(number string, didWorkspaceId string) (bool,error) {
+func FinishValidation(number string, didWorkspaceId string) (bool,error) {
 	num, err := libphonenumber.Parse(number, "US")
 	if err != nil {
 		return false, err
@@ -607,7 +606,7 @@ func finishValidation(number string, didWorkspaceId string) (bool,error) {
 	}
 	return false,nil
 }
-func checkFreeTrialStatus(plan string, started time.Time) string {
+func CheckFreeTrialStatus(plan string, started time.Time) string {
 	if plan  == "trial" {
 		now := time.Now()
 		//make configurable
@@ -621,7 +620,7 @@ func checkFreeTrialStatus(plan string, started time.Time) string {
 	}
 	return "not-applicable";
 }
-func checkIsMakingOutboundCallFirstTime(call Call) {
+func CheckIsMakingOutboundCallFirstTime(call Call) {
 	var id string
 	row := db.QueryRow("SELECT id FROM `calls` WHERE `workspace_id` = ? AND `from` LIKE '?%s' AND `direction = 'outbound'", call.WorkspaceId, call.From, call.Direction)
 	err := row.Scan(&id);
@@ -630,16 +629,16 @@ func checkIsMakingOutboundCallFirstTime(call Call) {
 		return
 	}
 	//send notification
-	user, err := getUserFromDB(call.UserId)
+	user, err := GetUserFromDB(call.UserId)
 	if err != nil {
 		panic(err)
 	}
 	body := `A call was made to ` + call.To + ` for the first time on your account.`;
-	sendEmail(user, "First call to destination country", body)
+	SendEmail(user, "First call to destination country", body)
 }
-func sendEmail(user *User, subject string, body string) {
+func SendEmail(user *User, subject string, body string) {
 }
-func someLoadBalancingLogic() (*MediaServer,error) {
+func SomeLoadBalancingLogic() (*MediaServer,error) {
 	results, err := db.Query("SELECT ip_address,private_ip_address FROM media_servers");
     if err != nil {
 		return nil,err
@@ -655,14 +654,14 @@ func someLoadBalancingLogic() (*MediaServer,error) {
 	}
 	return nil,nil
 }
-func doVerifyCaller(workspaceId int, number string) (bool, error) {
+func DoVerifyCaller(workspaceId int, number string) (bool, error) {
 	var workspace* Workspace;
 
   if !settings.ValidateCallerId { 
     return true, nil
   }
 
-	workspace, err := getWorkspaceFromDB(workspaceId)
+	workspace, err := GetWorkspaceFromDB(workspaceId)
 	if err != nil {
 		return false, err
 	}
@@ -683,7 +682,7 @@ func doVerifyCaller(workspaceId int, number string) (bool, error) {
 	return false, nil
 }
 
-func getQueryVariable(r *http.Request, key string) *string {
+func GetQueryVariable(r *http.Request, key string) *string {
 	vals := r.URL.Query() // Returns a url.Values, which is a map[string][]string
 	results, ok := vals[key] // Note type, not ID. ID wasn't specified anywhere.
 	var value *string
@@ -694,7 +693,7 @@ func getQueryVariable(r *http.Request, key string) *string {
 	}
 	return value
 }
-func uploadS3(folder string, name string, file multipart.File) (error) {
+func UploadS3(folder string, name string, file multipart.File) (error) {
 	bucket := "lineblocs"
 	key := folder + "/" + name
 	// The session the S3 Uploader will use
@@ -720,7 +719,7 @@ func uploadS3(folder string, name string, file multipart.File) (error) {
 	return nil
 }
 
-func createS3URL(folder string, id string) string {
+func CreateS3URL(folder string, id string) string {
 	return "https://lineblocs.s3.ca-central-1.amazonaws.com/" + folder + "/" + id
 }
 
@@ -728,131 +727,7 @@ func NoContent(w http.ResponseWriter, r *http.Request) {
   // Set up any headers you want here.
   w.WriteHeader(http.StatusNoContent) // send the headers with a 204 response code.
 }
-func toCents(dollars float64) int {
+func ToCents(dollars float64) int {
 	result := dollars * 100
 	return int( result )
-}
-
-func CreateCall(w http.ResponseWriter, r *http.Request) {
-  w.Header().Set("Content-Type", "application/json")
-  var call Call
-  now := time.Now()
-
-   err := json.NewDecoder(r.Body).Decode(&call)
-	if err != nil {
-		handleInternalErr("CreateCall Could not decode JSON", err, w)
-		return 
-	}
-   workspace, err := getWorkspaceFromDB(call.WorkspaceId)
-	if err != nil {
-		handleInternalErr("CreateCall Could not decode JSON", err, w)
-		return 
-	}
-
-	call.APIId = createAPIID("call")
-
-	if call.Direction == "outbound" {
-		//check if this is the first time we are making a call to this destination
-		go checkIsMakingOutboundCallFirstTime(call)
-	}
-
-  // perform a db.Query insert
-	stmt, err := db.Prepare("INSERT INTO calls (`from`, `to`, `status`, `direction`, `duration`, `user_id`, `workspace_id`, `started_at`, `created_at`, `updated_at`, `api_id`, `plan_snapshot`) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )")
-	if err != nil {
-		handleInternalErr("CreateCall Could not execute query..", err, w);
-		return 
-	}
-	defer stmt.Close()
-	fmt.Printf("CreateCall args from=%s, to=%s, status=%s, direction=%s, user_id=%s, workspace_id=%s, started=%s, plan=%s",
-		call.From, call.To, call.Status, call.Direction, call.UserId, call.WorkspaceId, now, call.APIId, workspace.Plan)
-
-	res, err := stmt.Exec(call.From, call.To, call.Status, call.Direction, "8", call.UserId, call.WorkspaceId, now, now, now, call.APIId, workspace.Plan)
-
-		
-		if err != nil {
-			handleInternalErr("CreateCall Could not execute query", err, w)
-		return
-	}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
-
-	callId, err := res.LastInsertId()
-	if err != nil {
-			handleInternalErr("CreateCall Could not execute query..", err, w);
-		return
-	}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
-    w.Header().Set("X-Call-ID", strconv.FormatInt(callId, 10))
-  	json.NewEncoder(w).Encode(&call)
-}
-
-func UpdateCall(w http.ResponseWriter, r *http.Request) {
-  w.Header().Set("Content-Type", "application/json")
-  var update CallUpdateReq
-   err := json.NewDecoder(r.Body).Decode(&update)
-	if err != nil {
-		handleInternalErr("UpdateCall 1 Could not decode JSON", err, w)
-
-		return 
-	}
-	
-	
-	if ( update.Status == "ended" ) {
-		// perform a db.Query insert
-		stmt, err := db.Prepare("UPDATE calls SET `status` = ?, `ended_at` = ?, `updated_at` = ? WHERE `api_id` = ?")
-		if err != nil {
-			fmt.Printf("UpdateCall 2 Could not execute query..");
-			fmt.Println(err)
-  			w.WriteHeader(http.StatusInternalServerError)
-			return 
-		}
-		defer stmt.Close()
-		endedAt := time.Now()
-		updatedAt := time.Now()
-		_, err = stmt.Exec(update.Status, endedAt, updatedAt, update.CallId)
-		if err != nil {
-			handleInternalErr("UpdateCall 3 Could not execute query", err, w)
-			return
-		}
-	}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
-
-  	w.WriteHeader(http.StatusNoContent)
-}
-
-func CreateConference(w http.ResponseWriter, r *http.Request) {
-  w.Header().Set("Content-Type", "application/json")
-  var conference Conference
-  err := json.NewDecoder(r.Body).Decode(&conference)
-	if err != nil {
-		handleInternalErr("CreateConference 1 Could not decode JSON", err, w)
-		return 
-	}
-	var id int
-	var name string
-	row := db.QueryRow("SELECT id, name FROM conferences WHERE workspace_id=? AND name=?", conference.WorkspaceId, conference.Name)
-	err = row.Scan(&id, &name);
-	if ( err == sql.ErrNoRows ) {  //create conference
-		conference.APIId = createAPIID("conf")
-		  // perform a db.Query insert
-		now := time.Now()
-		stmt, err := db.Prepare("INSERT INTO conferences (`name`, `workspace_id`, `api_id`, `created_at`, `updated_at`) VALUES ( ?, ?, ?, ?, ? )");
-		if err != nil {
-			handleInternalErr("CreateConference 3 Could not execute query..", err, w);
-			return 
-		}
-		defer stmt.Close()
-		res, err := stmt.Exec(conference.Name, conference.WorkspaceId, conference.APIId, now, now)
-		
-		if err != nil {
-			handleInternalErr("CreateConference 4 Could not execute query", err, w)
-			return
-		}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
-		conferenceId, err := res.LastInsertId()
-		if err != nil {
-			handleInternalErr("CreateConference 5 Could not get ID..", err, w);
-			return
-		}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
-		w.Header().Set("X-Conference-ID", strconv.FormatInt(conferenceId, 10))
-  		json.NewEncoder(w).Encode(&conference)
-	}
-
-	w.Header().Set("X-Conference-ID", strconv.Itoa(id))
- 	json.NewEncoder(w).Encode(&conference)
 }
