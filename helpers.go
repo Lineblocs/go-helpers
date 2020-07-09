@@ -232,6 +232,9 @@ type GlobalSettings struct {
 var db* sql.DB;
 var settings *GlobalSettings;
 func CreateDBConn(prefix string) (*sql.DB, error) {
+	if db != nil {
+		return db, nil
+	}
 	db, err := sql.Open("mysql", `lineblocs:&!UER~7$Z>fx3S3J@tcp(lineblocs.ckehyurhpc6m.ca-central-1.rds.amazonaws.com:3306)/lineblocs?parseTime=true`)
 	//db, err = sql.Open("mysql", "root:mysql@tcp(127.0.0.1:3306)/lineblocs?parseTime=true") //add parse time
 	if err != nil {
