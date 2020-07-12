@@ -37,6 +37,7 @@ type Call struct {
   StartedAt time.Time
   EndedAt time.Time
 }
+
 type CallUpdateReq struct {
   CallId int `json:"call_id"`
   Status string `json:"status"`
@@ -266,6 +267,11 @@ type WorkspaceBillingInfo struct {
 	RemainingBalanceCents int
 }
 
+type DIDNumber struct {
+  Number string `json:"number"`
+  MonthlyCosts int `json:"monthly_costs"`
+  SetupCosts int `json:"setup_costs"`
+}
 
 var db* sql.DB;
 var settings *GlobalSettings;
@@ -361,6 +367,24 @@ func GetCallFromDB(id int) (*Call, error) {
 
 	call := &Call{StartedAt: startedAt, EndedAt: endedAt, DurationNumber: int(math.Round(diff.Seconds()))}
 	return call, nil
+}
+func GetDIDFromDB(id int) (*DIDNumber, error) {
+	var didId int
+	var monthlyCosts int
+	var setupCosts int
+	var number string
+	row := db.QueryRow(`SELECT id, number, monthly_costs, setup_costs FROM did_numbers WHERE id=?`, id)
+
+	err := row.Scan(&didId, &number, &monthlyCosts, setupCosts)
+	if ( err == sql.ErrNoRows ) {  //create conference
+		return nil, err
+	}
+	if ( err != nil ) {  //another error
+		return nil, err
+	}
+
+	did := &DIDNumber{Number: number, MonthlyCosts: monthlyCosts, SetupCosts: setupCosts}
+	return did, nil
 }
 
 
