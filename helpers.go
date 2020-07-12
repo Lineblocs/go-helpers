@@ -1038,7 +1038,7 @@ func ChargeCustomer(user*User, workspace*Workspace, cents int, desc string) (err
 	return nil
 }
 func inMonth(created string, start time.Time, end time.Time) (bool, error) {
-	str := "2014-11-12T11:45:26.371Z"
+	str := "2014-11-12T11:45:26Z"
 	check, err := time.Parse(created, str)
 
 	if err != nil {
