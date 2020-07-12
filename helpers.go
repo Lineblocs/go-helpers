@@ -230,6 +230,30 @@ type GlobalSettings struct {
 }
 
 type ServicePlan struct {
+	Name string `json:"name"`
+	BaseCosts int `json:"base_costs"`
+	MinutesPerMonth int `json:"minutes_per_month"`
+	Extensions int `json:"extensions"`
+	Ports int `json:"ports"`
+	RecordingSpace int `json:"recording_space"`
+	Fax int `json:"fax"`
+	CallingBetweenExt bool `json:"calling_between_ext"`
+	StandardCallFeat bool `json:"standard_call_feat"`
+	VoicemailTranscriptions bool `json:"voicemail_transcriptions"`
+	ImIntegrations bool `json:"im_integrations"`
+	ProductivityIntegrations bool `json:"productivity_integrations"`
+	VoiceAnalytics bool `json:"voice_analytics"`
+	FraudProtection bool `json:"fraud_protection"`
+	CrmIntegrations bool `json:"crm_integrations"`
+	ProgrammableToolkit bool `json:"programmable_toolkit"`
+	Sso bool `json:"sso"`
+	Provisioner bool `json:"provisioner`
+	Vpn bool `json:"vpn"`
+	MultipleSipDomains bool `json:"multiple_sip_domains"`
+	BringCarrier bool `json:"bring_carrier"`
+	CallCenter bool `json:"call_center"`
+	Config247Support bool `json:"247_support"`
+	AiCalls bool `json:"ai_calls"`
 
 }
 
