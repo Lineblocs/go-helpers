@@ -8,6 +8,7 @@ import (
 	"net"
 	"strings"
 	"context"
+	math "math"
 	//"errors"
 	"mime/multipart"
 	"reflect"
@@ -29,9 +30,12 @@ type Call struct {
   Status string `json:"status"`
   Direction string `json:"direction"`
   Duration string `json:"duration"`
+  DurationNumber int `json:"duration_number"`
   UserId int `json:"user_id"`
   WorkspaceId int  `json:"workspace_id"`
   APIId string `json:"api_id"`
+  StartedAt time.Time
+  EndedAt time.Time
 }
 type CallUpdateReq struct {
   CallId int `json:"call_id"`
@@ -340,6 +344,25 @@ func GetWorkspaceFromDB(id int) (*Workspace, error) {
 	}
 	return &Workspace{Id: workspaceId, Name: name, CreatorId: creatorId, OutboundMacroId: int(outboundMacroId.Int64), Plan: plan}, nil
 }
+func GetCallFromDB(id int) (*Call, error) {
+	var callId int
+	var startedAt time.Time
+	var endedAt time.Time
+	row := db.QueryRow(`SELECT id, started_at, ended_at FROM calls WHERE id=?`, id)
+
+	err := row.Scan(&callId, &startedAt, &endedAt)
+	if ( err == sql.ErrNoRows ) {  //create conference
+		return nil, err
+	}
+	if ( err != nil ) {  //another error
+		return nil, err
+	}
+	diff := endedAt.Sub(startedAt)
+
+	call := &Call{StartedAt: startedAt, EndedAt: endedAt, DurationNumber: int(math.Round(diff.Seconds()))}
+	return call, nil
+}
+
 
 func GetRecordingSpace(id int) (int, error) {
 	var bytes int
