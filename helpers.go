@@ -266,6 +266,9 @@ type WorkspaceBillingInfo struct {
 	InvoiceDue string
 	RemainingBalanceCents int
 }
+type BaseCosts struct {
+	RecordingsPerByte int
+}
 
 type DIDNumber struct {
   Number string `json:"number"`
@@ -301,6 +304,11 @@ func HandleInternalErr(msg string, err error, w http.ResponseWriter) {
 	fmt.Println(err)
 	w.WriteHeader(http.StatusInternalServerError)
 }
+func CalculateRecordingCosts(size int) float64 {
+	var result float64 = float64(length) * .000005
+	return result
+}
+
 func CalculateTTSCosts(length int) float64 {
 	var result float64 = float64(length) * .000005
 	return result
@@ -833,5 +841,12 @@ func GetServicePlans() ([]ServicePlan, error) {
 }
 func GetWorkspaceBillingInfo(workspace *Workspace) (*WorkspaceBillingInfo, error) {
 	var info WorkspaceBillingInfo
+	return &info, nil
+}
+func GetBaseCosts() (*WorkspaceBillingInfo, error) {
+	recordingPerByte := 0.000000000000999
+	costs := BaseCosts{
+		RecordingsPerByte: recordingPerByte
+	}
 	return &info, nil
 }
