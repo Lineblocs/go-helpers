@@ -749,7 +749,7 @@ func ToCents(dollars float64) int {
 	return int( result )
 }
 
-func GetServicePlans() ([]ServicePlan, err) {
+func GetServicePlans() ([]ServicePlan, error) {
 	plans := []ServicePlan{};
 	plans = append(plans, ServicePlan{})
 	return plans, nil
