@@ -24,6 +24,7 @@ import (
 	"github.com/mailgun/mailgun-go/v4"
 	"github.com/stripe/stripe-go/v71"
 	"github.com/stripe/stripe-go/v71/charge"
+	now "github.com/jinzhu/now"
 )
 
 type Call struct {
@@ -151,6 +152,20 @@ type Workspace struct {
   OutboundMacroId int `json:"outbound_macro_id"`
   Plan string `json:"plan"`
 }
+type UserCredit struct {
+	Cents int `json:"cents"`
+	CreatedAt string `json:"created_at"`
+}
+type UserDebit struct {
+	Cents int `json:"cents"`
+	CreatedAt string `json:"created_at"`
+}
+type UserInvoice struct {
+	Cents int `json:"cents"`
+	Source string `json:"source"`
+	Status string `json:"status"`
+	CreatedAt string `json:"created_at"`
+}
 
 type WorkspaceParam struct {
 	Key string `json:"key"`
@@ -266,7 +281,11 @@ type ServicePlan struct {
 
 type WorkspaceBillingInfo struct {
 	InvoiceDue string
+	NextInvoiceDue string
 	RemainingBalanceCents int
+	ChargesThisMonth int
+	AccountBalance int
+	EstimatedBalance int
 }
 type BaseCosts struct {
 	RecordingsPerByte float64
@@ -843,6 +862,86 @@ func GetServicePlans() ([]ServicePlan, error) {
 }
 func GetWorkspaceBillingInfo(workspace *Workspace) (*WorkspaceBillingInfo, error) {
 	var info WorkspaceBillingInfo
+
+	remainingBalance := 0
+	chargesThisMonth := 0
+	accountBalance := 0
+	estimatedBalance := 0
+	results, err := db.Query(`SELECT cents,created_at FROM users_credits WHERE workspace_id = ?`, workspace.Id) 
+
+    if err != nil {
+		return nil, err;
+	}
+	defer results.Close()
+	credits := make([]UserCredit, 0)
+    for results.Next() {
+		credit := UserCredit{};
+		results.Scan(&credit.Cents, &credit.CreatedAt)
+		credits = append(credits,credit)
+	}
+
+	results, err = db.Query(`SELECT cents,created_at FROM users_debits WHERE workspace_id = ?`, workspace.Id) 
+
+    if err != nil {
+		return nil, err;
+	}
+	defer results.Close()
+	debits := make([]UserDebit, 0)
+    for results.Next() {
+		debit := UserDebit{};
+		results.Scan(&debit.Cents, &debit.CreatedAt)
+		debits = append(debits,debit)
+	}
+
+	results, err = db.Query(`SELECT cents,source,status,created_at FROM users_invoices WHERE workspace_id = ?`, workspace.Id) 
+
+    if err != nil {
+		return nil, err;
+	}
+	defer results.Close()
+	invoices := make([]UserInvoice, 0)
+    for results.Next() {
+		invoice := UserInvoice{};
+		results.Scan(&invoice.Cents, &invoice.Source, &invoice.Status,&invoice.CreatedAt)
+		invoices = append(invoices,invoice)
+	}
+
+	current := time.Now()
+	start := now.BeginningOfMonth()    // 2013-11-01 00:00:00 Fri
+	end := now.EndOfMonth()          // 2013-11-30 23:59:59.999999999 Sat
+	next := current.AddDate(0, 1, 0)
+	remainingBalance = 0
+	for _, credit := range credits {
+		remainingBalance += credit.Cents
+	}
+	for _, debit := range debits {
+		valid, err := inMonth(debit.CreatedAt, start, end) 
+		if err != nil {
+			return nil, err;
+		}
+		if valid {
+			chargesThisMonth += debit.Cents
+		}
+		remainingBalance -= debit.Cents
+	}
+	for _, invoice := range invoices {
+		if invoice.Status == "completed" {
+			accountBalance += invoice.Cents
+		}
+		if invoice.Source == "CREDITS" {
+            remainingBalance -= invoice.Cents
+        }
+	}
+	estimatedBalance = chargesThisMonth + accountBalance
+	nextInvoiceDue := next.Format("2006 Jan 02")
+	thisInvoiceDue :=start.Format("2006 Jan 02")
+	info.ChargesThisMonth = chargesThisMonth
+	info.AccountBalance = accountBalance
+	info.EstimatedBalance = estimatedBalance
+	info.RemainingBalanceCents = remainingBalance
+	info.InvoiceDue = thisInvoiceDue
+	info.NextInvoiceDue = nextInvoiceDue
+
 	return &info, nil
 }
 func GetBaseCosts() (*BaseCosts, error) {
@@ -878,5 +977,27 @@ func ChargeCustomer(user*User, workspace*Workspace, cents int, desc string) (err
 		return err
 	}
 	return nil
+}
+func inMonth(created string, start time.Time, end time.Time) (bool, error) {
+	str := "2014-11-12T11:45:26.371Z"
+	check, err := time.Parse(created, str)
+
+	if err != nil {
+		fmt.Printf("error inMonth call\r\n")
+		fmt.Println(err)
+		return false, err
+	}
+	var result bool
+	if start.Before(end) {
+		result = !check.Before(start) && !check.After(end)
+		return result, nil
+    }
+    if start.Equal(end) {
+		result = check.Equal(start)
+		return result, nil
+	}
+
+	result = !start.After(check) || !end.Before(check)
+	return result, nil
 }
 
