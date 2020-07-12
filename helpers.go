@@ -268,6 +268,7 @@ type WorkspaceBillingInfo struct {
 }
 type BaseCosts struct {
 	RecordingsPerByte float64
+	FaxPerUsed float64
 }
 
 type DIDNumber struct {
@@ -841,6 +842,7 @@ func GetWorkspaceBillingInfo(workspace *Workspace) (*WorkspaceBillingInfo, error
 }
 func GetBaseCosts() (*BaseCosts, error) {
 	recordingPerByte := 0.000000000000999
-	costs := BaseCosts{ RecordingsPerByte: recordingPerByte }
+	faxPerUsed := 0.000000000000999
+	costs := BaseCosts{ RecordingsPerByte: recordingPerByte, FaxPerUsed: faxPerUsed }
 	return &costs, nil
 }
