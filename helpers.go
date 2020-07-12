@@ -22,6 +22,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/mailgun/mailgun-go/v4"
+	"github.com/stripe/stripe-go/v71"
+	"github.com/stripe/stripe-go/v71/charge"
 )
 
 type Call struct {
@@ -270,7 +272,9 @@ type BaseCosts struct {
 	RecordingsPerByte float64
 	FaxPerUsed float64
 }
-
+type BaseConfig struct {
+	StripeKey string
+}
 type DIDNumber struct {
   Number string `json:"number"`
   MonthlyCosts int `json:"monthly_costs"`
@@ -846,3 +850,32 @@ func GetBaseCosts() (*BaseCosts, error) {
 	costs := BaseCosts{ RecordingsPerByte: recordingPerByte, FaxPerUsed: faxPerUsed }
 	return &costs, nil
 }
+func GetBaseConfig() (*BaseConfig, error) {
+	config := BaseConfig{ StripeKey: "" }
+	return &config, nil
+}
+func ChargeCustomer(user*User, workspace*Workspace, cents int, desc string) (error) {
+	config, err := GetBaseConfig()
+	if err != nil {
+		return err
+	}
+
+	stripe.Key = config.StripeKey
+
+	var id int
+	var tokenId string
+	row := db.QueryRow(`SELECT id, stripe_id FROM users_cards WHERE workspace_id=? AND primary =1`, workspace.Id)
+
+	err = row.Scan(&id, &tokenId)
+	// `source` is obtained with Stripe.js; see https://stripe.com/docs/payments/accept-a-payment-charges#web-create-token
+	params := &stripe.ChargeParams{ Amount: stripe.Int64(int64(cents)),
+		Currency: stripe.String(string(stripe.CurrencyUSD)),
+		Description: stripe.String(desc),
+		Source: &stripe.SourceParams{Token: stripe.String(tokenId)} }
+	_, err = charge.New(params)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
