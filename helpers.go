@@ -233,6 +233,12 @@ type ServicePlan struct {
 
 }
 
+type WorkspaceBillingInfo struct {
+	InvoiceDue string
+	RemainingBalanceCents int
+}
+
+
 var db* sql.DB;
 var settings *GlobalSettings;
 func CreateDBConn() (*sql.DB, error) {
@@ -753,4 +759,8 @@ func GetServicePlans() ([]ServicePlan, error) {
 	plans := []ServicePlan{};
 	plans = append(plans, ServicePlan{})
 	return plans, nil
+}
+func GetWorkspaceBillingInfo(workspace Workspace) (WorkspaceBillingInfo, error) {
+	var info WorkspaceBillingInfo
+	return info, nil
 }
