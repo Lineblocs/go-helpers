@@ -229,6 +229,10 @@ type GlobalSettings struct {
   ValidateCallerId bool
 }
 
+type ServicePlan struct {
+
+}
+
 var db* sql.DB;
 var settings *GlobalSettings;
 func CreateDBConn() (*sql.DB, error) {
@@ -743,4 +747,10 @@ func NoContent(w http.ResponseWriter, r *http.Request) {
 func ToCents(dollars float64) int {
 	result := dollars * 100
 	return int( result )
+}
+
+func GetServicePlans() ([]ServicePlan) {
+	plans := []ServicePlan{};
+	plans = append(plans, ServicePlan{})
+	return plans
 }
