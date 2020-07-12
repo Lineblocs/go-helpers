@@ -267,7 +267,7 @@ type WorkspaceBillingInfo struct {
 	RemainingBalanceCents int
 }
 type BaseCosts struct {
-	RecordingsPerByte int
+	RecordingsPerByte float64
 }
 
 type DIDNumber struct {
@@ -303,10 +303,6 @@ func HandleInternalErr(msg string, err error, w http.ResponseWriter) {
 	fmt.Printf(msg)
 	fmt.Println(err)
 	w.WriteHeader(http.StatusInternalServerError)
-}
-func CalculateRecordingCosts(size int) float64 {
-	var result float64 = float64(length) * .000005
-	return result
 }
 
 func CalculateTTSCosts(length int) float64 {
@@ -843,10 +839,8 @@ func GetWorkspaceBillingInfo(workspace *Workspace) (*WorkspaceBillingInfo, error
 	var info WorkspaceBillingInfo
 	return &info, nil
 }
-func GetBaseCosts() (*WorkspaceBillingInfo, error) {
+func GetBaseCosts() (*BaseCosts, error) {
 	recordingPerByte := 0.000000000000999
-	costs := BaseCosts{
-		RecordingsPerByte: recordingPerByte
-	}
-	return &info, nil
+	costs := BaseCosts{ RecordingsPerByte: recordingPerByte }
+	return &costs, nil
 }
