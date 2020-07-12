@@ -253,12 +253,14 @@ type GlobalSettings struct {
 
 type ServicePlan struct {
 	Name string `json:"name"`
-	BaseCosts int `json:"base_costs"`
+	BaseCosts float64 `json:"base_costs"`
 	MinutesPerMonth int `json:"minutes_per_month"`
 	Extensions int `json:"extensions"`
 	Ports int `json:"ports"`
+	Porting bool `json:"portiing"`
 	RecordingSpace int `json:"recording_space"`
 	Fax int `json:"fax"`
+	UnlimitedFax bool `json:"unlimited_fax"`
 	CallingBetweenExt bool `json:"calling_between_ext"`
 	StandardCallFeat bool `json:"standard_call_feat"`
 	VoicemailTranscriptions bool `json:"voicemail_transcriptions"`
@@ -279,6 +281,13 @@ type ServicePlan struct {
 
 }
 
+type PlanValue struct {
+	Kind string
+	ValueBool bool
+	ValueString string
+	ValueInt int
+	ValueFloat float64
+}
 type WorkspaceBillingInfo struct {
 	InvoiceDue string
 	NextInvoiceDue string
@@ -857,7 +866,57 @@ func ToCents(dollars float64) int {
 
 func GetServicePlans() ([]ServicePlan, error) {
 	plans := []ServicePlan{};
-	plans = append(plans, ServicePlan{})
+
+
+	extras := make(map[string]PlanValue)
+	plans = append(plans, createPlan("pay-as-you-go", extras))
+
+	extras = make(map[string]PlanValue)
+	extras["BaseCosts"] = PlanValue{ ValueFloat: 24.99 }
+	extras["MinutesPerMonth"] = PlanValue{ValueInt: 200}
+	extras["RecordingSpace"] = PlanValue{ValueInt: convertGbToKb(2)}
+	extras["ImIntegrations"] = PlanValue{ValueBool: true}
+	extras["ProductivityIntegrations"] = PlanValue{ValueBool: true}
+	plans = append(plans, createPlan("starter", extras))
+
+	extras = make(map[string]PlanValue)
+	extras["BaseCosts"] = PlanValue{ ValueFloat: 49.99 }
+	extras["MinutesPerMonth"] = PlanValue{ValueInt: 250}
+	extras["RecordingSpace"] = PlanValue{ValueInt: convertGbToKb(32)}
+	extras["Extensions"] = PlanValue{ValueInt: 25}
+	extras["ImIntegrations"] = PlanValue{ValueBool: true}
+	extras["VoiceAnalytics"] = PlanValue{ValueBool: true}
+	extras["FraudProtection"] = PlanValue{ValueBool: true}
+	extras["CrmIntegrations"] = PlanValue{ValueBool: true}
+	extras["ProgrammableToolkit"] = PlanValue{ValueBool: true}
+	extras["Sso"] = PlanValue{ValueBool: true}
+	extras["Provisioner"] = PlanValue{ValueBool: true}
+	extras["Vpn"] = PlanValue{ValueBool: true}
+	extras["MultipleSipDomains"] = PlanValue{ValueBool: true}
+	extras["BringCarrier"] = PlanValue{ValueBool: true}
+	plans = append(plans, createPlan("pro", extras))
+
+	extras = make(map[string]PlanValue)
+	extras["BaseCosts"] = PlanValue{ ValueFloat: 69.99 }
+	extras["MinutesPerMonth"] = PlanValue{ValueInt: 500}
+	extras["RecordingSpace"] = PlanValue{ValueInt: convertGbToKb(128)}
+	extras["Extensions"] = PlanValue{ValueInt: 100}
+	extras["ImIntegrations"] = PlanValue{ValueBool: true}
+	extras["VoiceAnalytics"] = PlanValue{ValueBool: true}
+	extras["FraudProtection"] = PlanValue{ValueBool: true}
+	extras["CrmIntegrations"] = PlanValue{ValueBool: true}
+	extras["ProgrammableToolkit"] = PlanValue{ValueBool: true}
+	extras["Sso"] = PlanValue{ValueBool: true}
+	extras["Provisioner"] = PlanValue{ValueBool: true}
+	extras["Vpn"] = PlanValue{ValueBool: true}
+	extras["MultipleSipDomains"] = PlanValue{ValueBool: true}
+	extras["BringCarrier"] = PlanValue{ValueBool: true}
+	extras["CallCenter"] = PlanValue{ValueBool: true}
+	extras["247Support"] = PlanValue{ValueBool: true}
+	extras["AiCalls"] = PlanValue{ValueBool: true}
+	plans = append(plans, createPlan("ultimate", extras))
+
+
 	return plans, nil
 }
 func GetWorkspaceBillingInfo(workspace *Workspace) (*WorkspaceBillingInfo, error) {
@@ -1000,4 +1059,124 @@ func inMonth(created string, start time.Time, end time.Time) (bool, error) {
 	result = !start.After(check) || !end.Before(check)
 	return result, nil
 }
+func convertGbToKb( gb int ) (int) {
+	return gb * 1024
+}
+func convertMinutesToSeconds( min int ) (int) {
+	return min * 60
+}
 
+func createPlan(name string, extras map[string]PlanValue) (ServicePlan) {
+	plan := ServicePlan{ BaseCosts: 0,
+           MinutesPerMonth: 0,
+           Extensions: 5,
+           Ports: 0,
+           RecordingSpace: 1024,
+           Fax: 100,
+           Porting: true,
+           CallingBetweenExt: true,
+           StandardCallFeat: true,
+           VoicemailTranscriptions: false,
+           ImIntegrations: false,
+           ProductivityIntegrations: false,
+           VoiceAnalytics: false,
+           FraudProtection: false,
+           CrmIntegrations: false,
+           ProgrammableToolkit: false,
+           Sso: false,
+           Provisioner: false,
+           Vpn: false,
+           MultipleSipDomains: false,
+           BringCarrier: false,
+           CallCenter: false,
+           Config247Support: false,
+		   AiCalls: false };
+
+		plan.Name = name
+	if val, ok := extras["BaseCosts"]; ok {
+		//do something here
+		plan.BaseCosts = val.ValueFloat
+	}
+	if val, ok := extras["Extensions"]; ok {
+		//do something here
+		plan.Extensions = val.ValueInt
+	}
+	if val, ok := extras["Fax"]; ok {
+		//do something here
+		plan.Fax = val.ValueInt
+	}
+    if val, ok := extras["Porting"]; ok {
+		//do something here
+		plan.Porting = val.ValueBool
+	}
+	if val, ok := extras["CallingBetweenExt"]; ok {
+		//do something here
+		plan.CallingBetweenExt = val.ValueBool
+	}
+	if val, ok := extras["StandardCallFeat"]; ok {
+		//do something here
+		plan.StandardCallFeat = val.ValueBool
+	}
+	if val, ok := extras["VoicemailTranscriptions"]; ok {
+		//do something here
+		plan.VoicemailTranscriptions = val.ValueBool
+	}
+	if val, ok := extras["ImIntegrations"]; ok {
+		//do something here
+		plan.ImIntegrations = val.ValueBool
+	}
+	if val, ok := extras["ProductivityIntegrations"]; ok {
+		//do something here
+		plan.ProductivityIntegrations = val.ValueBool
+	}
+	if val, ok := extras["VoiceAnalytics"]; ok {
+		//do something here
+		plan.VoiceAnalytics = val.ValueBool
+	}
+	if val, ok := extras["FraudProtection"]; ok {
+		//do something here
+		plan.FraudProtection = val.ValueBool
+	}
+
+	if val, ok := extras["CrmIntegrations"]; ok {
+		//do something here
+		plan.CrmIntegrations = val.ValueBool
+	}
+	if val, ok := extras["Sso"]; ok {
+		//do something here
+		plan.Sso = val.ValueBool
+	}
+	if val, ok := extras["ProgrammableToolkit"]; ok {
+		//do something here
+		plan.Sso = val.ValueBool
+	}
+	if val, ok := extras["Provisioner"]; ok {
+		//do something here
+		plan.Provisioner = val.ValueBool
+	}
+	if val, ok := extras["Vpn"]; ok {
+		//do something here
+		plan.Vpn = val.ValueBool
+	}
+	if val, ok := extras["MultipleSipDomains"]; ok {
+		//do something here
+		plan.MultipleSipDomains = val.ValueBool
+	}
+	if val, ok := extras["BringCarrier"]; ok {
+		//do something here
+		plan.BringCarrier = val.ValueBool
+	}
+	if val, ok := extras["CallCenter"]; ok {
+		//do something here
+		plan.CallCenter = val.ValueBool
+	}
+	if val, ok := extras["247Support"]; ok {
+		//do something here
+		plan.Config247Support = val.ValueBool
+	}
+	if val, ok := extras["AiCalls"]; ok {
+		//do something here
+		plan.AiCalls = val.ValueBool
+	}
+	return plan
+}
