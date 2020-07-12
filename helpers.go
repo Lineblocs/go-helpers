@@ -760,7 +760,7 @@ func GetServicePlans() ([]ServicePlan, error) {
 	plans = append(plans, ServicePlan{})
 	return plans, nil
 }
-func GetWorkspaceBillingInfo(workspace Workspace) (WorkspaceBillingInfo, error) {
+func GetWorkspaceBillingInfo(workspace *Workspace) (*WorkspaceBillingInfo, error) {
 	var info WorkspaceBillingInfo
-	return info, nil
+	return &info, nil
 }
