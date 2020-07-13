@@ -1010,7 +1010,7 @@ func GetBaseCosts() (*BaseCosts, error) {
 	return &costs, nil
 }
 func GetBaseConfig() (*BaseConfig, error) {
-	config := BaseConfig{ StripeKey: "" }
+	config := BaseConfig{ StripeKey: os.Getenv("STRIPE_KEY") }
 	return &config, nil
 }
 func ChargeCustomer(user*User, workspace*Workspace, cents int, desc string) (error) {
