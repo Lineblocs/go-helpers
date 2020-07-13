@@ -305,8 +305,8 @@ type BaseConfig struct {
 }
 type DIDNumber struct {
   Number string `json:"number"`
-  MonthlyCosts int `json:"monthly_costs"`
-  SetupCosts int `json:"setup_costs"`
+  MonthlyCost int `json:"monthly_costs"`
+  SetupCost int `json:"setup_costs"`
 }
 
 var db* sql.DB;
@@ -408,12 +408,12 @@ func GetCallFromDB(id int) (*Call, error) {
 }
 func GetDIDFromDB(id int) (*DIDNumber, error) {
 	var didId int
-	var monthlyCosts int
-	var setupCosts int
+	var monthlyCost int
+	var setupCost int
 	var number string
-	row := db.QueryRow(`SELECT id, number, monthly_costs, setup_costs FROM did_numbers WHERE id=?`, id)
+	row := db.QueryRow(`SELECT id, number, monthly_cost, setup_cost FROM did_numbers WHERE id=?`, id)
 
-	err := row.Scan(&didId, &number, &monthlyCosts, setupCosts)
+	err := row.Scan(&didId, &number, &monthlyCost, setupCost)
 	if ( err == sql.ErrNoRows ) {  //create conference
 		return nil, err
 	}
@@ -421,7 +421,7 @@ func GetDIDFromDB(id int) (*DIDNumber, error) {
 		return nil, err
 	}
 
-	did := &DIDNumber{Number: number, MonthlyCosts: monthlyCosts, SetupCosts: setupCosts}
+	did := &DIDNumber{Number: number, MonthlyCost: monthlyCost, SetupCost: setupCost}
 	return did, nil
 }
 
