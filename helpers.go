@@ -135,11 +135,15 @@ type LogRoutine struct {
   To string
 }
 type User struct {
-  Id int
-  Username string
-  FirstName string
-  LastName string
-  Email string
+  Id int `json:"id"`
+  Username string `json:"username"`
+
+  FirstName string `json:"first_name"`
+
+  LastName string `json:"last_name"`
+
+  Email string `json:"email"`
+
 }
 
 type Workspace struct {
