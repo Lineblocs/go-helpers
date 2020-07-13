@@ -260,7 +260,7 @@ type ServicePlan struct {
 	Extensions int `json:"extensions"`
 	Ports int `json:"ports"`
 	Porting bool `json:"portiing"`
-	RecordingSpace int `json:"recording_space"`
+	RecordingSpace float64 `json:"recording_space"`
 	Fax int `json:"fax"`
 	UnlimitedFax bool `json:"unlimited_fax"`
 	CallingBetweenExt bool `json:"calling_between_ext"`
@@ -876,7 +876,7 @@ func GetServicePlans() ([]ServicePlan, error) {
 	extras = make(map[string]PlanValue)
 	extras["BaseCosts"] = PlanValue{ ValueFloat: 24.99 }
 	extras["MinutesPerMonth"] = PlanValue{ValueFloat: 200.0}
-	extras["RecordingSpace"] = PlanValue{ValueInt: convertGbToKb(2)}
+	extras["RecordingSpace"] = PlanValue{ValueFloat: float64(convertGbToKb(2))}
 	extras["ImIntegrations"] = PlanValue{ValueBool: true}
 	extras["ProductivityIntegrations"] = PlanValue{ValueBool: true}
 	plans = append(plans, createPlan("starter", extras))
@@ -884,7 +884,7 @@ func GetServicePlans() ([]ServicePlan, error) {
 	extras = make(map[string]PlanValue)
 	extras["BaseCosts"] = PlanValue{ ValueFloat: 49.99 }
 	extras["MinutesPerMonth"] = PlanValue{ValueFloat: 250.0}
-	extras["RecordingSpace"] = PlanValue{ValueInt: convertGbToKb(32)}
+	extras["RecordingSpace"] = PlanValue{ValueFloat: float64(convertGbToKb(32))}
 	extras["Extensions"] = PlanValue{ValueInt: 25}
 	extras["ImIntegrations"] = PlanValue{ValueBool: true}
 	extras["VoiceAnalytics"] = PlanValue{ValueBool: true}
@@ -901,7 +901,7 @@ func GetServicePlans() ([]ServicePlan, error) {
 	extras = make(map[string]PlanValue)
 	extras["BaseCosts"] = PlanValue{ ValueFloat: 69.99 }
 	extras["MinutesPerMonth"] = PlanValue{ValueFloat: 500.0}
-	extras["RecordingSpace"] = PlanValue{ValueInt: convertGbToKb(128)}
+	extras["RecordingSpace"] = PlanValue{ValueFloat: float64(convertGbToKb(128))}
 	extras["Extensions"] = PlanValue{ValueInt: 100}
 	extras["ImIntegrations"] = PlanValue{ValueBool: true}
 	extras["VoiceAnalytics"] = PlanValue{ValueBool: true}
@@ -1071,7 +1071,7 @@ func createPlan(name string, extras map[string]PlanValue) (ServicePlan) {
            MinutesPerMonth: 0.0,
            Extensions: 5,
            Ports: 0,
-           RecordingSpace: 1024,
+           RecordingSpace: 1024.0,
            Fax: 100,
            Porting: true,
            CallingBetweenExt: true,
@@ -1100,6 +1100,10 @@ func createPlan(name string, extras map[string]PlanValue) (ServicePlan) {
 	if val, ok := extras["MinutesPerMonth"]; ok {
 		//do something here
 		plan.MinutesPerMonth = val.ValueFloat
+	}
+	if val, ok := extras["RecordingSpace"]; ok {
+		//do something here
+		plan.RecordingSpace = val.ValueFloat
 	}
 	if val, ok := extras["Extensions"]; ok {
 		//do something here
