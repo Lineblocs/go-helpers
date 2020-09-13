@@ -349,6 +349,11 @@ func CreateMediaServers() ([]MediaServer, error) {
 		return servers, nil
 	}
 
+	db, err := CreateDBConn()
+	if err != nil {
+		return nil, err
+	}
+
 	results, err := db.Query("SELECT ip_address,private_ip_address,webrtc_optimized FROM media_servers")
 	if err != nil {
 		return nil, err
