@@ -246,10 +246,6 @@ type MacroFunction struct {
 	Code string `json:"code"`
 	CompiledCode string `json:"compiled_code"`
 }
-type MediaServer struct {
-	IpAddress string `json:"ip_address"`
-	PrivateIpAddress string `json:"private_ip_address"`
-}
 type EmailInfo struct {
 	Message string `json:"message"`
 }
