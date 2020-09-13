@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/aws/aws-sdk-go v1.33.5
+	github.com/clockworksoul/smudge v1.0.0 // indirect
 	github.com/go-chi/chi v4.1.2+incompatible // indirect
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang/protobuf v1.4.2 // indirect

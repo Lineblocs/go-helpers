@@ -23,6 +23,7 @@ import (
 	"github.com/mailgun/mailgun-go/v4"
 	"github.com/stripe/stripe-go/v71"
 	"github.com/stripe/stripe-go/v71/charge"
+	"github.com/clockworksoul/smudge"
 	now "github.com/jinzhu/now"
 )
 
@@ -314,6 +315,12 @@ type DIDNumber struct {
   MonthlyCost int `json:"monthly_costs"`
   SetupCost int `json:"setup_costs"`
 }
+type MediaServer struct {
+	IpAddress string `json:"ip_address"`
+	PrivateIpAddress string `json:"private_ip_address"`
+	RtcOptimized bool `json:"rtc_optimized"`
+	Node *smudge.Node
+}
 
 var db* sql.DB;
 var settings *GlobalSettings;
@@ -338,6 +345,29 @@ func CreateAPIID(prefix string) string {
 }
 func LookupBestCallRate(number string, typeRate string) *CallRate {
 	return &CallRate{ CallRate: 9.99 };
+}
+
+func CreateMediaServers() (error) {
+	results, err := db.Query("SELECT ip_address,private_ip_address,webrtc_optimized FROM media_servers")
+	if err != nil {
+		return err
+	}
+	defer results.Close()
+
+	for results.Next() {
+		value := MediaServer{};
+		err := results.Scan(&value.IpAddress,&value.PrivateIpAddress,&value.RtcOptimized);
+		if err != nil {
+			return err
+		}
+		node, err := smudge.CreateNodeByAddress(value.IpAddress)
+		if err != nil {
+			return err
+		}
+		value.Node = node
+		servers= append(servers, value)
+	}
+	return nil
 }
 func HandleInternalErr(msg string, err error, w http.ResponseWriter) {
 	fmt.Printf(msg)
