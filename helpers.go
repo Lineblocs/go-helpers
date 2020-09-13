@@ -323,6 +323,7 @@ type MediaServer struct {
 }
 
 var db* sql.DB;
+var servers []MediaServer;
 var settings *GlobalSettings;
 func CreateDBConn() (*sql.DB, error) {
 	if db != nil {
@@ -347,10 +348,14 @@ func LookupBestCallRate(number string, typeRate string) *CallRate {
 	return &CallRate{ CallRate: 9.99 };
 }
 
-func CreateMediaServers() (error) {
+func CreateMediaServers() ([]MediaServer, error) {
+	if servers != nil {
+		return servers, nil
+	}
+
 	results, err := db.Query("SELECT ip_address,private_ip_address,webrtc_optimized FROM media_servers")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer results.Close()
 
@@ -358,16 +363,16 @@ func CreateMediaServers() (error) {
 		value := MediaServer{};
 		err := results.Scan(&value.IpAddress,&value.PrivateIpAddress,&value.RtcOptimized);
 		if err != nil {
-			return err
+			return nil, err
 		}
 		node, err := smudge.CreateNodeByAddress(value.IpAddress)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		value.Node = node
 		servers= append(servers, value)
 	}
-	return nil
+	return servers, nil
 }
 func HandleInternalErr(msg string, err error, w http.ResponseWriter) {
 	fmt.Printf(msg)
