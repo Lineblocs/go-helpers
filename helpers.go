@@ -315,9 +315,13 @@ type MediaServer struct {
 	IpAddress string `json:"ip_address"`
 	PrivateIpAddress string `json:"private_ip_address"`
 	RtcOptimized bool `json:"rtc_optimized"`
+	Status string `json:"status"`
 	Node *smudge.Node
 }
-
+type SIPRouter struct {
+	IpAddress string `json:"ip_address"`
+	PrivateIpAddress string `json:"private_ip_address"`
+}
 var db* sql.DB;
 var servers []MediaServer;
 var settings *GlobalSettings;
@@ -375,6 +379,29 @@ func CreateMediaServers() ([]MediaServer, error) {
 	}
 	return servers, nil
 }
+
+func GetSIPRouter(region string) (*SIPRouter, error) {
+	db, err := CreateDBConn()
+	if err != nil {
+		return nil, err
+	}
+
+	results, err := db.Query("SELECT ip_address,private_ip_address FROM sip_routers WHERE region = ?", region)
+	if err != nil {
+		return nil, err
+	}
+	defer results.Close()
+
+	for results.Next() {
+		value := SIPRouter{};
+		err := results.Scan(&value.IpAddress,&value.PrivateIpAddress);
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &value, nil
+}
+
 func HandleInternalErr(msg string, err error, w http.ResponseWriter) {
 	fmt.Printf(msg)
 	fmt.Println(err)
