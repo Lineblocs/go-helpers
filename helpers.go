@@ -323,7 +323,7 @@ type SIPRouter struct {
 	PrivateIpAddress string `json:"private_ip_address"`
 }
 var db* sql.DB;
-var servers []MediaServer;
+//var servers []*MediaServer;
 var settings *GlobalSettings;
 func CreateDBConn() (*sql.DB, error) {
 	if db != nil {
@@ -348,10 +348,13 @@ func LookupBestCallRate(number string, typeRate string) *CallRate {
 	return &CallRate{ CallRate: 9.99 };
 }
 
-func CreateMediaServers() ([]MediaServer, error) {
+func CreateMediaServers() ([]*MediaServer, error) {
+	var servers []*MediaServer;
+	/*
 	if servers != nil {
 		return servers, nil
 	}
+	*/
 
 	db, err := CreateDBConn()
 	if err != nil {
@@ -375,7 +378,7 @@ func CreateMediaServers() ([]MediaServer, error) {
 			return nil, err
 		}
 		value.Node = node
-		servers= append(servers, value)
+		servers= append(servers, &value)
 	}
 	return servers, nil
 }
