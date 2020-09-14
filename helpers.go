@@ -406,6 +406,30 @@ func GetSIPRouter(region string) (*SIPRouter, error) {
 	return &value, nil
 }
 
+func GetSIPRouters() ([]*SIPRouter, error) {
+	db, err := CreateDBConn()
+	if err != nil {
+		return nil, err
+	}
+
+	results, err := db.Query("SELECT ip_address,private_ip_address FROM sip_routers")
+	if err != nil {
+		return nil, err
+	}
+	defer results.Close()
+
+	var values []*SIPRouter
+	for results.Next() {
+		value := SIPRouter{};
+		err := results.Scan(&value.IpAddress,&value.PrivateIpAddress);
+		if err != nil {
+			return nil, err
+		}
+		values = append(values, &value)
+	}
+	return values, nil
+}
+
 func HandleInternalErr(msg string, err error, w http.ResponseWriter) {
 	fmt.Printf(msg)
 	fmt.Println(err)
