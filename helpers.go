@@ -1,4 +1,4 @@
-package lineblocs 
+package lineblocs
 
 import (
     "net/http"
@@ -371,7 +371,7 @@ func CreateMediaServers() ([]MediaServer, error) {
 			return nil, err
 		}
 		node, err := smudge.CreateNodeByAddress(value.IpAddress)
-		vif err != nil {
+		if err != nil {
 			return nil, err
 		}
 		value.Node = node
