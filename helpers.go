@@ -371,7 +371,7 @@ func CreateMediaServers() ([]MediaServer, error) {
 			return nil, err
 		}
 		node, err := smudge.CreateNodeByAddress(value.IpAddress)
-		if err != nil {
+		vif err != nil {
 			return nil, err
 		}
 		value.Node = node
@@ -392,8 +392,9 @@ func GetSIPRouter(region string) (*SIPRouter, error) {
 	}
 	defer results.Close()
 
+	var value SIPRouter
 	for results.Next() {
-		value := SIPRouter{};
+		value = SIPRouter{};
 		err := results.Scan(&value.IpAddress,&value.PrivateIpAddress);
 		if err != nil {
 			return nil, err
