@@ -379,6 +379,7 @@ func CreateMediaServers() ([]*MediaServer, error) {
 			return nil, err
 		}
 		value.Node = node
+		value.CallCount= 0
 		servers= append(servers, &value)
 	}
 	return servers, nil
