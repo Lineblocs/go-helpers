@@ -390,6 +390,7 @@ func GetSIPRouter(region string) (*SIPRouter, error) {
 	}
 
 	results, err := db.Query("SELECT ip_address,private_ip_address FROM sip_routers WHERE region = ?", region)
+	//results, err := db.Query("SELECT ip_address,private_ip_address FROM sip_routers")
 	if err != nil {
 		return nil, err
 	}
