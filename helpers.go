@@ -316,6 +316,7 @@ type MediaServer struct {
 	PrivateIpAddress string `json:"private_ip_address"`
 	RtcOptimized bool `json:"rtc_optimized"`
 	Status string `json:"status"`
+	CallCount int `json:"call_count"`
 	Node *smudge.Node
 }
 type SIPRouter struct {
