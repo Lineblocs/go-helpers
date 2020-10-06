@@ -341,6 +341,9 @@ func CreateDBConn() (*sql.DB, error) {
 	  return db, nil
 }
 
+
+
+
 func CreateAPIID(prefix string) string {
 	id := guuid.New()
 	return prefix + "-" + id.String()
@@ -1285,4 +1288,22 @@ func createPlan(name string, extras map[string]PlanValue) (ServicePlan) {
 		plan.AiCalls = val.ValueBool
 	}
 	return plan
+}
+
+func UpdateLiveStat(server *MediaServer, stat string, value string) (error) {
+	stmt, err := db.Prepare("UPDATE media_servers SET " + stat + " = ? WHERE id = ?");
+
+	if err != nil {
+		fmt.Printf("could not prepare query..")
+		return nil, err
+	}
+
+	defer stmt.Close()
+	res, err := stmt.Exec(value, server.Id)
+	if err != nil {
+		fmt.Printf("could not execute query..")
+		fmt.Println(err)
+		return err
+	}
+	return nil
 }
