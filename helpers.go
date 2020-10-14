@@ -312,7 +312,7 @@ type DIDNumber struct {
   SetupCost int `json:"setup_costs"`
 }
 type MediaServer struct {
-	Id string `json:"id"`
+	Id int `json:"id"`
 	IpAddress string `json:"ip_address"`
 	PrivateIpAddress string `json:"private_ip_address"`
 	RtcOptimized bool `json:"rtc_optimized"`
