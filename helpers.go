@@ -1292,7 +1292,7 @@ func createPlan(name string, extras map[string]PlanValue) (ServicePlan) {
 }
 
 func UpdateLiveStat(server *MediaServer, stat string, value string) (error) {
-	err := CreateDBConn()
+	db, err := CreateDBConn()
 	if err != nil {
 		fmt.Printf("could not create DB..")
 		fmt.Println(err)
