@@ -318,7 +318,7 @@ type MediaServer struct {
 	RtcOptimized bool `json:"rtc_optimized"`
 	Status string `json:"status"`
 	LiveCallCount int `json:"live_call_count"`
-	LiveCPUPCTUsed float `json:"live_cpu_pct_used"`
+	LiveCPUPCTUsed float64 `json:"live_cpu_pct_used"`
 	Node *smudge.Node
 }
 type SIPRouter struct {
