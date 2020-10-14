@@ -321,6 +321,7 @@ type MediaServer struct {
 	Node *smudge.Node
 }
 type SIPRouter struct {
+	Id int `json:"id"`
 	IpAddress string `json:"ip_address"`
 	PrivateIpAddress string `json:"private_ip_address"`
 	Node *smudge.Node
@@ -396,7 +397,7 @@ func GetSIPRouter(region string) (*SIPRouter, error) {
 		return nil, err
 	}
 
-	results, err := db.Query("SELECT ip_address,private_ip_address FROM sip_routers WHERE region = ?", region)
+	results, err := db.Query("SELECT id,ip_address,private_ip_address FROM sip_routers WHERE region = ?", region)
 	//results, err := db.Query("SELECT ip_address,private_ip_address FROM sip_routers")
 	if err != nil {
 		return nil, err
@@ -406,7 +407,7 @@ func GetSIPRouter(region string) (*SIPRouter, error) {
 	var value SIPRouter
 	for results.Next() {
 		value = SIPRouter{};
-		err := results.Scan(&value.IpAddress,&value.PrivateIpAddress);
+		err := results.Scan(&value.Id,&value.IpAddress,&value.PrivateIpAddress);
 		if err != nil {
 			return nil, err
 		}
