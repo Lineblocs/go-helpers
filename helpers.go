@@ -1315,3 +1315,29 @@ func UpdateLiveStat(server *MediaServer, stat string, value string) (error) {
 	}
 	return nil
 }
+
+
+func UpdateRouterLiveStat(router *SIPRouter, stat string, value string) (error) {
+	db, err := CreateDBConn()
+	if err != nil {
+		fmt.Printf("could not create DB..")
+		fmt.Println(err)
+		return err
+	}
+
+	stmt, err := db.Prepare("UPDATE sip_routers SET " + stat + " = ? WHERE id = ?");
+
+	if err != nil {
+		fmt.Printf("could not prepare query..")
+		return err
+	}
+
+	defer stmt.Close()
+	_, err = stmt.Exec(value, strconv.Itoa(router.Id))
+	if err != nil {
+		fmt.Printf("could not execute query..")
+		fmt.Println(err)
+		return err
+	}
+	return nil
+}
