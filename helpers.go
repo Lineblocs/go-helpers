@@ -1300,7 +1300,7 @@ func UpdateLiveStat(server *MediaServer, stat string, value string) (error) {
 	}
 
 	defer stmt.Close()
-	res, err := stmt.Exec(value, strconv.Itoa(server.Id))
+	_, err := stmt.Exec(value, strconv.Itoa(server.Id))
 	if err != nil {
 		fmt.Printf("could not execute query..")
 		fmt.Println(err)
