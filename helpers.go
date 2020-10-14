@@ -312,6 +312,7 @@ type DIDNumber struct {
   SetupCost int `json:"setup_costs"`
 }
 type MediaServer struct {
+	Id string `json:"id"`
 	IpAddress string `json:"ip_address"`
 	PrivateIpAddress string `json:"private_ip_address"`
 	RtcOptimized bool `json:"rtc_optimized"`
@@ -365,7 +366,7 @@ func CreateMediaServers() ([]*MediaServer, error) {
 		return nil, err
 	}
 
-	results, err := db.Query("SELECT ip_address,private_ip_address,webrtc_optimized FROM media_servers")
+	results, err := db.Query("SELECT id,ip_address,private_ip_address,webrtc_optimized FROM media_servers")
 	if err != nil {
 		return nil, err
 	}
@@ -373,7 +374,7 @@ func CreateMediaServers() ([]*MediaServer, error) {
 
 	for results.Next() {
 		value := MediaServer{};
-		err := results.Scan(&value.IpAddress,&value.PrivateIpAddress,&value.RtcOptimized);
+		err := results.Scan(&value.Id,&value.IpAddress,&value.PrivateIpAddress,&value.RtcOptimized);
 		if err != nil {
 			return nil, err
 		}
@@ -874,14 +875,14 @@ func CheckIsMakingOutboundCallFirstTime(call Call) {
 func SendEmail(user *User, subject string, body string) {
 }
 func SomeLoadBalancingLogic() (*MediaServer,error) {
-	results, err := db.Query("SELECT ip_address,private_ip_address FROM media_servers");
+	results, err := db.Query("SELECT id,ip_address,private_ip_address FROM media_servers");
     if err != nil {
 		return nil,err
 	}
   defer results.Close()
     for results.Next() {
 		value := MediaServer{};
-		err = results.Scan(&value.IpAddress,&value.PrivateIpAddress);
+		err = results.Scan(&value.Id,&value.IpAddress,&value.PrivateIpAddress);
 		if err != nil {
 			return nil,err
 		}
