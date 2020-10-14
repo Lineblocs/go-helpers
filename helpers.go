@@ -317,7 +317,8 @@ type MediaServer struct {
 	PrivateIpAddress string `json:"private_ip_address"`
 	RtcOptimized bool `json:"rtc_optimized"`
 	Status string `json:"status"`
-	CallCount int `json:"call_count"`
+	LiveCallCount int `json:"live_call_count"`
+	LiveCPUPCTUsed float `json:"live_cpu_pct_used"`
 	Node *smudge.Node
 }
 type SIPRouter struct {
@@ -368,7 +369,7 @@ func CreateMediaServers() ([]*MediaServer, error) {
 		return nil, err
 	}
 
-	results, err := db.Query("SELECT id,ip_address,private_ip_address,webrtc_optimized FROM media_servers")
+	results, err := db.Query("SELECT id,ip_address,private_ip_address,webrtc_optimized,live_call_count,live_cpu_pct_used,live_status FROM media_servers")
 	if err != nil {
 		return nil, err
 	}
@@ -376,7 +377,7 @@ func CreateMediaServers() ([]*MediaServer, error) {
 
 	for results.Next() {
 		value := MediaServer{};
-		err := results.Scan(&value.Id,&value.IpAddress,&value.PrivateIpAddress,&value.RtcOptimized);
+		err := results.Scan(&value.Id,&value.IpAddress,&value.PrivateIpAddress,&value.RtcOptimized,&value.LiveCallCount,&value.LiveCPUPCTUsed,&value.Status);
 		if err != nil {
 			return nil, err
 		}
@@ -385,7 +386,6 @@ func CreateMediaServers() ([]*MediaServer, error) {
 			return nil, err
 		}
 		value.Node = node
-		value.CallCount= 0
 		servers= append(servers, &value)
 	}
 	return servers, nil
@@ -882,14 +882,14 @@ func CheckIsMakingOutboundCallFirstTime(call Call) {
 func SendEmail(user *User, subject string, body string) {
 }
 func SomeLoadBalancingLogic() (*MediaServer,error) {
-	results, err := db.Query("SELECT id,ip_address,private_ip_address FROM media_servers");
+	results, err := db.Query("SELECT id,ip_address,private_ip_address,live_call_count,live_cpu_pct_used,live_status FROM media_servers");
     if err != nil {
 		return nil,err
 	}
   defer results.Close()
     for results.Next() {
 		value := MediaServer{};
-		err = results.Scan(&value.Id,&value.IpAddress,&value.PrivateIpAddress);
+		err = results.Scan(&value.Id,&value.IpAddress,&value.PrivateIpAddress,&value.LiveCallCount,&value.LiveCPUPCTUsed,&value.Status);
 		if err != nil {
 			return nil,err
 		}
