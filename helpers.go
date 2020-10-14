@@ -323,6 +323,7 @@ type MediaServer struct {
 type SIPRouter struct {
 	IpAddress string `json:"ip_address"`
 	PrivateIpAddress string `json:"private_ip_address"`
+	Node *smudge.Node
 }
 var db* sql.DB;
 //var servers []*MediaServer;
@@ -409,6 +410,11 @@ func GetSIPRouter(region string) (*SIPRouter, error) {
 		if err != nil {
 			return nil, err
 		}
+		node, err := smudge.CreateNodeByAddress(value.IpAddress)
+		if err != nil {
+			return nil, err
+		}
+		value.Node = node
 	}
 	return &value, nil
 }
