@@ -335,7 +335,11 @@ func CreateDBConn() (*sql.DB, error) {
 		return db, nil
 	}
 	var err error
-	db, err = sql.Open("mysql", `lineblocs:&!UER~7$Z>fx3S3J@tcp(lineblocs.ckehyurhpc6m.ca-central-1.rds.amazonaws.com:3306)/lineblocs?parseTime=true`)
+	db_user := os.Getenv("DB_USER")
+	db_pass := os.Getenv("DB_PASS")
+	db_host := os.Getenv("DB_HOST")
+	db_name := os.Getenv("DB_NAME")
+	db, err = sql.Open("mysql", db_user + ":" + db_pass + "@tcp(" + db_host + ":3306)/" + db_name + "?parseTime=true")
 	//db, err = sql.Open("mysql", "root:mysql@tcp(127.0.0.1:3306)/lineblocs?parseTime=true") //add parse time
 	if err != nil {
 		panic("Could not connect to MySQL");
