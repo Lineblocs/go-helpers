@@ -1,4 +1,4 @@
-module bitbucket.org/infinitet3ch/lineblocs-go-helpers
+module github.com/Lineblocs/go-helpers
 
 go 1.14
 
