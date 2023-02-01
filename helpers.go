@@ -282,6 +282,7 @@ type ServicePlan struct {
 	Config247Support bool `json:"247_support"`
 	AiCalls bool `json:"ai_calls"`
 	TwentyFourSevenSupport bool `json:"247_support"`
+	PayAsYouGo bool `json:"pay_as_you_go"`
 }
 
 type PlanValue struct {
@@ -1036,8 +1037,7 @@ func GetServicePlans() ([]ServicePlan, error) {
 }
 
 func GetServicePlans2() ([]ServicePlan, error) {
-	results, err := db.Query(`SELECT monthly_cost_cents, minutes_per_month, recording_space, extensions, im_integrations, voice_analytics, fraud_protection, crm_integrations, programmable_toolkit, sso, provisioner, vpn, multiple_sip_domains, bring_carrier, 247_support, ai_calls FROM service_plans`)
-
+	results, err := db.Query(`SELECT monthly_cost_cents, minutes_per_month, recording_space, extensions, im_integrations, voice_analytics, fraud_protection, crm_integrations, programmable_toolkit, sso, provisioner, vpn, multiple_sip_domains, bring_carrier, 247_support, ai_calls, pay_as_you_go FROM service_plans`)
     if err != nil {
 		return nil, err;
 	}
@@ -1062,7 +1062,8 @@ func GetServicePlans2() ([]ServicePlan, error) {
 			&plan.BringCarrier,
 			&plan.CallCenter,
 			&plan.TwentyFourSevenSupport,
-			&plan.AiCalls)
+			&plan.AiCalls,
+			&plan.PayAsYouGo)
 		plans = append( plans, plan )
 	}
 	return plans, nil
