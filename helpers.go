@@ -1067,6 +1067,90 @@ func GetServicePlans2() ([]ServicePlan, error) {
 	}
 	return plans, nil
 }
+func GetWorkspaceBillingInfo(workspace *Workspace) (*WorkspaceBillingInfo, error) {
+	var info WorkspaceBillingInfo
+
+	remainingBalance := 0.0
+	chargesThisMonth := 0.0
+	accountBalance := 0.0
+	estimatedBalance := 0.0
+	results, err := db.Query(`SELECT id,cents,created_at FROM users_credits WHERE workspace_id = ?`, workspace.Id) 
+
+    if err != nil {
+		return nil, err;
+	}
+	defer results.Close()
+	credits := make([]UserCredit, 0)
+    for results.Next() {
+		credit := UserCredit{};
+		results.Scan(&credit.Id, &credit.Cents, &credit.CreatedAt)
+		credits = append(credits,credit)
+	}
+
+	results, err = db.Query(`SELECT id,cents,created_at FROM users_debits WHERE workspace_id = ?`, workspace.Id) 
+
+    if err != nil {
+		return nil, err;
+	}
+	defer results.Close()
+	debits := make([]UserDebit, 0)
+    for results.Next() {
+		debit := UserDebit{};
+		results.Scan(&debit.Id, &debit.Cents, &debit.CreatedAt)
+		debits = append(debits,debit)
+	}
+
+	results, err = db.Query(`SELECT id,cents,source,status,created_at FROM users_invoices WHERE workspace_id = ?`, workspace.Id) 
+
+    if err != nil {
+		return nil, err;
+	}
+	defer results.Close()
+	invoices := make([]UserInvoice, 0)
+    for results.Next() {
+		invoice := UserInvoice{};
+		results.Scan(&invoice.Id, &invoice.Cents, &invoice.Source, &invoice.Status,&invoice.CreatedAt)
+		invoices = append(invoices,invoice)
+	}
+
+	current := time.Now()
+	start := now.BeginningOfMonth()    // 2013-11-01 00:00:00 Fri
+	end := now.EndOfMonth()          // 2013-11-30 23:59:59.999999999 Sat
+	next := current.AddDate(0, 1, 0)
+	remainingBalance = 0
+	for _, credit := range credits {
+		remainingBalance += credit.Cents
+	}
+	for _, debit := range debits {
+		valid, err := inMonth(debit.CreatedAt, start, end) 
+		if err != nil {
+			return nil, err;
+		}
+		if valid {
+			chargesThisMonth += debit.Cents
+		}
+		remainingBalance -= debit.Cents
+	}
+	for _, invoice := range invoices {
+		if invoice.Status == "completed" {
+			accountBalance += invoice.Cents
+		}
+		if invoice.Source == "CREDITS" {
+            remainingBalance -= invoice.Cents
+        }
+	}
+	estimatedBalance = chargesThisMonth + accountBalance
+	nextInvoiceDue := next.Format("2006 Jan 02")
+	thisInvoiceDue :=start.Format("2006 Jan 02")
+	info.ChargesThisMonth = chargesThisMonth
+	info.AccountBalance = accountBalance
+	info.EstimatedBalance = estimatedBalance
+	info.RemainingBalanceCents = remainingBalance
+	info.InvoiceDue = thisInvoiceDue
+	info.NextInvoiceDue = nextInvoiceDue
+
+	return &info, nil
+}
 func GetBaseCosts() (*BaseCosts, error) {
 	recordingPerByte := 0.000000000000999
 	faxPerUsed := 0.000000000000999
