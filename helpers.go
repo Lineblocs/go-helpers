@@ -1,249 +1,251 @@
 package lineblocs
 
 import (
-    "net/http"
-	"os"
-	"time"
-	"strconv"
-	"net"
-	"strings"
 	"context"
+	"io"
+	"net"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
 	//"errors"
+	"database/sql"
+	"fmt"
 	"mime/multipart"
 	"reflect"
-	"fmt"
-	"database/sql"
 	"regexp"
-	_ "github.com/go-sql-driver/mysql"
-	guuid "github.com/google/uuid"
-	libphonenumber "github.com/ttacon/libphonenumber"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	logrustash "github.com/bshuster-repo/logrus-logstash-hook"
+	"github.com/clockworksoul/smudge"
+	_ "github.com/go-sql-driver/mysql"
+	guuid "github.com/google/uuid"
+	logruscloudwatch "github.com/innix/logrus-cloudwatch"
+	now "github.com/jinzhu/now"
 	"github.com/mailgun/mailgun-go/v4"
+	"github.com/sirupsen/logrus"
 	"github.com/stripe/stripe-go/v71"
 	"github.com/stripe/stripe-go/v71/charge"
-	"github.com/clockworksoul/smudge"
-	now "github.com/jinzhu/now"
+	easy "github.com/t-tomalak/logrus-easy-formatter"
+	libphonenumber "github.com/ttacon/libphonenumber"
 )
 
 type Call struct {
-  From string `json:"from"`
-  To string `json:"to"`
-  Status string `json:"status"`
-  Direction string `json:"direction"`
-  Duration string `json:"duration"`
-  DurationNumber int `json:"duration_number"`
-  UserId int `json:"user_id"`
-  WorkspaceId int  `json:"workspace_id"`
-  APIId string `json:"api_id"`
-  StartedAt time.Time
-  EndedAt time.Time
+	From           string `json:"from"`
+	To             string `json:"to"`
+	Status         string `json:"status"`
+	Direction      string `json:"direction"`
+	Duration       string `json:"duration"`
+	DurationNumber int    `json:"duration_number"`
+	UserId         int    `json:"user_id"`
+	WorkspaceId    int    `json:"workspace_id"`
+	APIId          string `json:"api_id"`
+	StartedAt      time.Time
+	EndedAt        time.Time
 }
 
 type CallUpdateReq struct {
-  CallId int `json:"call_id"`
-  Status string `json:"status"`
+	CallId int    `json:"call_id"`
+	Status string `json:"status"`
 }
 type RecordingTranscriptionReq struct {
-	RecordingId int `json:"recording_id"`
-  Ready bool `json:"ready"`
-  Text string `json:"text"`
+	RecordingId int    `json:"recording_id"`
+	Ready       bool   `json:"ready"`
+	Text        string `json:"text"`
 }
 type Conference struct {
-  Name string `json:"name"`
-  WorkspaceId int `json:"workspace_id"`
-  APIId string `json:"api_id"`
+	Name        string `json:"name"`
+	WorkspaceId int    `json:"workspace_id"`
+	APIId       string `json:"api_id"`
 }
 type DebitCreateReq struct {
-  UserId int `json:"user_id"`
-  WorkspaceId int `json:"workspace_id"`
-  ModuleId int `json:"module_id"`
+	UserId      int `json:"user_id"`
+	WorkspaceId int `json:"workspace_id"`
+	ModuleId    int `json:"module_id"`
 
-  Source string `json:"source"`
-  Number string `json:"number"`
-  Type string `json:"type"`
-  Seconds float64 `json:"seconds"`
+	Source  string  `json:"source"`
+	Number  string  `json:"number"`
+	Type    string  `json:"type"`
+	Seconds float64 `json:"seconds"`
 }
-
 
 type CallRate struct {
 	CallRate float64
 }
 
-
 type DebitAPIParams struct {
-	Length int `json:"length"`	
-	RecordingLength float64 `json:"recording_length"`	
+	Length          int     `json:"length"`
+	RecordingLength float64 `json:"recording_length"`
 }
 type DebitAPICreateReq struct {
-  UserId int `json:"user_id"`
-  WorkspaceId int `json:"workspace_id"`
-  Type string `json:"type"`
-  Source string `json:"source"`
-  Params DebitAPIParams `json:"params"`
+	UserId      int            `json:"user_id"`
+	WorkspaceId int            `json:"workspace_id"`
+	Type        string         `json:"type"`
+	Source      string         `json:"source"`
+	Params      DebitAPIParams `json:"params"`
 }
 
 type LogCreateReq struct {
-  UserId int `json:"user_id"`
-  WorkspaceId int `json:"workspace_id"`
-  Title string `json:"title"`
-  Report string `json:"report"`
-  FlowId int `json:"flow_id"`
-  Level *string `json:"report"`
-  From *string `json:"from"`
-  To *string `json:"to"`
+	UserId      int     `json:"user_id"`
+	WorkspaceId int     `json:"workspace_id"`
+	Title       string  `json:"title"`
+	Report      string  `json:"report"`
+	FlowId      int     `json:"flow_id"`
+	Level       *string `json:"report"`
+	From        *string `json:"from"`
+	To          *string `json:"to"`
 }
 type LogSimpleCreateReq struct {
-  Type string `json:"type"`
-  Level *string `json:"level"`
+	Type  string  `json:"type"`
+	Level *string `json:"level"`
 }
 type Fax struct {
-  UserId int `json:"user_id"`
-  WorkspaceId int `json:"workspace_id"`
-  CallId int `json:"call_id"`
-  Uri string `json:"uri"`
-  APIId string `json:"api_id"`
+	UserId      int    `json:"user_id"`
+	WorkspaceId int    `json:"workspace_id"`
+	CallId      int    `json:"call_id"`
+	Uri         string `json:"uri"`
+	APIId       string `json:"api_id"`
 }
 
 type Recording struct {
-  Id int `json:"id"`
-  UserId int `json:"user_id"`
-  CallId int `json:"call_id"`
-  Size int `json:"size"`
-  WorkspaceId int `json:"workspace_id"`
-  APIId string `json:"api_id"`
-  Tags *[]string `json:"tags"`
-	TranscriptionReady bool `json:"transcription_ready"`
-	TranscriptionText string `json:"transcription_text"`
+	Id                 int       `json:"id"`
+	UserId             int       `json:"user_id"`
+	CallId             int       `json:"call_id"`
+	Size               int       `json:"size"`
+	WorkspaceId        int       `json:"workspace_id"`
+	APIId              string    `json:"api_id"`
+	Tags               *[]string `json:"tags"`
+	TranscriptionReady bool      `json:"transcription_ready"`
+	TranscriptionText  string    `json:"transcription_text"`
 }
 
 type VerifyNumber struct {
 	Valid bool `json:"valid"`
 }
 
-
-
-
 type LogRoutine struct {
-  UserId int
-  WorkspaceId int
-  Title string
-  Report string
-  FlowId int
-  Level string
-  From string
-  To string
+	UserId      int
+	WorkspaceId int
+	Title       string
+	Report      string
+	FlowId      int
+	Level       string
+	From        string
+	To          string
 }
 type User struct {
-  Id int `json:"id"`
-  Username string `json:"username"`
+	Id       int    `json:"id"`
+	Username string `json:"username"`
 
-  FirstName string `json:"first_name"`
+	FirstName string `json:"first_name"`
 
-  LastName string `json:"last_name"`
+	LastName string `json:"last_name"`
 
-  Email string `json:"email"`
-
+	Email string `json:"email"`
 }
 
 type Workspace struct {
-  Id int `json:"id"`
-  CreatorId int `json:"creator_id"`
-  Name string `json:"name"`
-  BYOEnabled bool `json:"byo_enabled"`
-  IPWhitelistDisabled bool `json:"ip_whitelist_disabled"`
-  OutboundMacroId int `json:"outbound_macro_id"`
-  Plan string `json:"plan"`
+	Id                  int    `json:"id"`
+	CreatorId           int    `json:"creator_id"`
+	Name                string `json:"name"`
+	BYOEnabled          bool   `json:"byo_enabled"`
+	IPWhitelistDisabled bool   `json:"ip_whitelist_disabled"`
+	OutboundMacroId     int    `json:"outbound_macro_id"`
+	Plan                string `json:"plan"`
 }
 type UserCredit struct {
-	Id int `json:"id"`
-	Cents float64 `json:"cents"`
-	CreatedAt string `json:"created_at"`
+	Id        int     `json:"id"`
+	Cents     float64 `json:"cents"`
+	CreatedAt string  `json:"created_at"`
 }
 type UserDebit struct {
-	Id int `json:"id"`
-	Cents float64 `json:"cents"`
-	CreatedAt string `json:"created_at"`
+	Id        int     `json:"id"`
+	Cents     float64 `json:"cents"`
+	CreatedAt string  `json:"created_at"`
 }
 type UserInvoice struct {
-	Id int `json:"id"`
-	Cents float64 `json:"cents"`
-	Source string `json:"source"`
-	Status string `json:"status"`
-	CreatedAt string `json:"created_at"`
+	Id        int     `json:"id"`
+	Cents     float64 `json:"cents"`
+	Source    string  `json:"source"`
+	Status    string  `json:"status"`
+	CreatedAt string  `json:"created_at"`
 }
 
 type WorkspaceParam struct {
-	Key string `json:"key"`
+	Key   string `json:"key"`
 	Value string `json:"value"`
 }
 type WorkspaceCreatorFullInfo struct {
-  Id int `json:"id"`
-	Workspace *Workspace `json:"workspace"`
-	WorkspaceName string `json:"workspace_name"`
-	WorkspaceDomain string `json:"workspace_domain"`
-	WorkspaceId int `json:"workspace_id"`
+	Id              int               `json:"id"`
+	Workspace       *Workspace        `json:"workspace"`
+	WorkspaceName   string            `json:"workspace_name"`
+	WorkspaceDomain string            `json:"workspace_domain"`
+	WorkspaceId     int               `json:"workspace_id"`
 	WorkspaceParams *[]WorkspaceParam `json:"workspace_params"`
-  	OutboundMacroId int `json:"outbound_macro_id"`
+	OutboundMacroId int               `json:"outbound_macro_id"`
 }
 type WorkspaceDIDInfo struct {
-  WorkspaceId int `json:"workspace_id"`
-  Number string `json:"number"`
-  FlowJSON string `json:"flow_json"`
-  WorkspaceName string `json:"workspace_name"`
-  Name string `json:"name"`
-  Plan string `json:"plan"`
-  BYOEnabled bool `json:"byo_enabled"`
-  IPWhitelistDisabled bool `json:"ip_whitelist_disabled"`
-  OutboundMacroId int `json:"outbound_macro_id"`
-  CreatorId int `json:"creator_id"`
-  APIToken string `json:"api_token"`
-  APISecret string `json:"api_secret"`
-  WorkspaceParams *[]WorkspaceParam `json:"workspace_params"`
+	WorkspaceId         int               `json:"workspace_id"`
+	Number              string            `json:"number"`
+	FlowJSON            string            `json:"flow_json"`
+	WorkspaceName       string            `json:"workspace_name"`
+	Name                string            `json:"name"`
+	Plan                string            `json:"plan"`
+	BYOEnabled          bool              `json:"byo_enabled"`
+	IPWhitelistDisabled bool              `json:"ip_whitelist_disabled"`
+	OutboundMacroId     int               `json:"outbound_macro_id"`
+	CreatorId           int               `json:"creator_id"`
+	APIToken            string            `json:"api_token"`
+	APISecret           string            `json:"api_secret"`
+	WorkspaceParams     *[]WorkspaceParam `json:"workspace_params"`
 }
 type WorkspacePSTNInfo struct {
-  IPAddr string `json:"ip_addr"`
-  DID string `json:"did"`
+	IPAddr string `json:"ip_addr"`
+	DID    string `json:"did"`
 }
 type CallerIDInfo struct {
-  CallerID string `json:"caller_id"`
+	CallerID string `json:"caller_id"`
 }
 type ExtensionFlowInfo struct {
-  CallerID string `json:"caller_id"`
-  WorkspaceId int `json:"workspace_id"`
-  FlowJSON string `json:"flow_json"`
-  Username string `json:"username"`
-  Name string `json:"name"`
-  WorkspaceName  string `json:"workspace_name"`
-  Plan string `json:"plan"`
-  CreatorId int `json:"creator_id"`
-  Id int `json:"id"`
-  APIToken string `json:"api_token"`
-  APISecret string `json:"api_secret"`
-  WorkspaceParams *[]WorkspaceParam `json:"workspace_params"`
-  FreeTrialStatus string `json:"workspace_params"`
+	CallerID        string            `json:"caller_id"`
+	WorkspaceId     int               `json:"workspace_id"`
+	FlowJSON        string            `json:"flow_json"`
+	Username        string            `json:"username"`
+	Name            string            `json:"name"`
+	WorkspaceName   string            `json:"workspace_name"`
+	Plan            string            `json:"plan"`
+	CreatorId       int               `json:"creator_id"`
+	Id              int               `json:"id"`
+	APIToken        string            `json:"api_token"`
+	APISecret       string            `json:"api_secret"`
+	WorkspaceParams *[]WorkspaceParam `json:"workspace_params"`
+	FreeTrialStatus string            `json:"workspace_params"`
 }
 
 type CodeFlowInfo struct {
-  WorkspaceId int `json:"workspace_id"`
-  Code string `json:"code"`
-  FlowJSON string `json:"flow_json"`
-  Name string `json:"name"`
-  WorkspaceName  string `json:"workspace_name"`
-  Plan string `json:"plan"`
-  CreatorId int `json:"creator_id"`
-  Id int `json:"id"`
-  APIToken string `json:"api_token"`
-  APISecret string `json:"api_secret"`
-  FreeTrialStatus string `json:"workspace_params"`
-  FoundCode bool `json:"found_code"`
+	WorkspaceId     int    `json:"workspace_id"`
+	Code            string `json:"code"`
+	FlowJSON        string `json:"flow_json"`
+	Name            string `json:"name"`
+	WorkspaceName   string `json:"workspace_name"`
+	Plan            string `json:"plan"`
+	CreatorId       int    `json:"creator_id"`
+	Id              int    `json:"id"`
+	APIToken        string `json:"api_token"`
+	APISecret       string `json:"api_secret"`
+	FreeTrialStatus string `json:"workspace_params"`
+	FoundCode       bool   `json:"found_code"`
 }
 
-
 type MacroFunction struct {
-	Title string `json:"title"`
-	Code string `json:"code"`
+	Title        string `json:"title"`
+	Code         string `json:"code"`
 	CompiledCode string `json:"compiled_code"`
 }
 type EmailInfo struct {
@@ -251,14 +253,12 @@ type EmailInfo struct {
 }
 
 type GlobalSettings struct {
-  ValidateCallerId bool
+	ValidateCallerId bool
 }
 
 type ServicePlan struct {
 	Name string `json:"name"`
 	BaseCosts float64 `json:"base_costs"`
-	AnnualCostCents float64 `json:"annual_cost_cents"`
-	MonthlyChargeCents float64 `json:"monthly_charge_cents"`
 	MinutesPerMonth float64 `json:"minutes_per_month"`
 	Extensions int `json:"extensions"`
 	Ports int `json:"ports"`
@@ -288,51 +288,55 @@ type ServicePlan struct {
 }
 
 type PlanValue struct {
-	Kind string
-	ValueBool bool
+	Kind        string
+	ValueBool   bool
 	ValueString string
-	ValueInt int
-	ValueFloat float64
+	ValueInt    int
+	ValueFloat  float64
 }
 type WorkspaceBillingInfo struct {
-	InvoiceDue string
-	NextInvoiceDue string
+	InvoiceDue            string
+	NextInvoiceDue        string
 	RemainingBalanceCents float64
-	ChargesThisMonth float64
-	AccountBalance float64
-	EstimatedBalance float64
+	ChargesThisMonth      float64
+	AccountBalance        float64
+	EstimatedBalance      float64
 }
 type BaseCosts struct {
 	RecordingsPerByte float64
-	FaxPerUsed float64
+	FaxPerUsed        float64
 }
 type BaseConfig struct {
 	StripeKey string
 }
 type DIDNumber struct {
-  Number string `json:"number"`
-  MonthlyCost int `json:"monthly_costs"`
-  SetupCost int `json:"setup_costs"`
+	Number      string `json:"number"`
+	MonthlyCost int    `json:"monthly_costs"`
+	SetupCost   int    `json:"setup_costs"`
 }
 type MediaServer struct {
-	Id int `json:"id"`
-	IpAddress string `json:"ip_address"`
-	PrivateIpAddress string `json:"private_ip_address"`
-	RtcOptimized bool `json:"rtc_optimized"`
-	Status string `json:"status"`
-	LiveCallCount int `json:"live_call_count"`
-	LiveCPUPCTUsed float64 `json:"live_cpu_pct_used"`
-	Node *smudge.Node
+	Id               int     `json:"id"`
+	IpAddress        string  `json:"ip_address"`
+	PrivateIpAddress string  `json:"private_ip_address"`
+	RtcOptimized     bool    `json:"rtc_optimized"`
+	Status           string  `json:"status"`
+	LiveCallCount    int     `json:"live_call_count"`
+	LiveCPUPCTUsed   float64 `json:"live_cpu_pct_used"`
+	Node             *smudge.Node
 }
 type SIPRouter struct {
-	Id int `json:"id"`
-	IpAddress string `json:"ip_address"`
+	Id               int    `json:"id"`
+	IpAddress        string `json:"ip_address"`
 	PrivateIpAddress string `json:"private_ip_address"`
-	Node *smudge.Node
+	Node             *smudge.Node
 }
-var db* sql.DB;
-//var servers []*MediaServer;
-var settings *GlobalSettings;
+
+var db *sql.DB
+
+// var servers []*MediaServer;
+var settings *GlobalSettings
+var log *logrus.Logger
+
 func CreateDBConn() (*sql.DB, error) {
 	if db != nil {
 		return db, nil
@@ -342,33 +346,30 @@ func CreateDBConn() (*sql.DB, error) {
 	db_pass := os.Getenv("DB_PASS")
 	db_host := os.Getenv("DB_HOST")
 	db_name := os.Getenv("DB_NAME")
-	db, err = sql.Open("mysql", db_user + ":" + db_pass + "@tcp(" + db_host + ":3306)/" + db_name + "?parseTime=true")
+	db, err = sql.Open("mysql", db_user+":"+db_pass+"@tcp("+db_host+":3306)/"+db_name+"?parseTime=true")
 	//db, err = sql.Open("mysql", "root:mysql@tcp(127.0.0.1:3306)/lineblocs?parseTime=true") //add parse time
 	if err != nil {
-		panic("Could not connect to MySQL");
+		panic("Could not connect to MySQL")
 		return nil, err
 	}
-	  db.SetMaxOpenConns(10)
-	  return db, nil
+	db.SetMaxOpenConns(10)
+	return db, nil
 }
-
-
-
 
 func CreateAPIID(prefix string) string {
 	id := guuid.New()
 	return prefix + "-" + id.String()
 }
 func LookupBestCallRate(number string, typeRate string) *CallRate {
-	return &CallRate{ CallRate: 9.99 };
+	return &CallRate{CallRate: 9.99}
 }
 
 func CreateMediaServers() ([]*MediaServer, error) {
-	var servers []*MediaServer;
+	var servers []*MediaServer
 	/*
-	if servers != nil {
-		return servers, nil
-	}
+		if servers != nil {
+			return servers, nil
+		}
 	*/
 
 	db, err := CreateDBConn()
@@ -383,8 +384,8 @@ func CreateMediaServers() ([]*MediaServer, error) {
 	defer results.Close()
 
 	for results.Next() {
-		value := MediaServer{};
-		err := results.Scan(&value.Id,&value.IpAddress,&value.PrivateIpAddress,&value.RtcOptimized,&value.LiveCallCount,&value.LiveCPUPCTUsed,&value.Status);
+		value := MediaServer{}
+		err := results.Scan(&value.Id, &value.IpAddress, &value.PrivateIpAddress, &value.RtcOptimized, &value.LiveCallCount, &value.LiveCPUPCTUsed, &value.Status)
 		if err != nil {
 			return nil, err
 		}
@@ -393,7 +394,7 @@ func CreateMediaServers() ([]*MediaServer, error) {
 			return nil, err
 		}
 		value.Node = node
-		servers= append(servers, &value)
+		servers = append(servers, &value)
 	}
 	return servers, nil
 }
@@ -413,8 +414,8 @@ func GetSIPRouter(region string) (*SIPRouter, error) {
 
 	var value SIPRouter
 	for results.Next() {
-		value = SIPRouter{};
-		err := results.Scan(&value.Id,&value.IpAddress,&value.PrivateIpAddress);
+		value = SIPRouter{}
+		err := results.Scan(&value.Id, &value.IpAddress, &value.PrivateIpAddress)
 		if err != nil {
 			return nil, err
 		}
@@ -441,8 +442,8 @@ func GetSIPRouters() ([]*SIPRouter, error) {
 
 	var values []*SIPRouter
 	for results.Next() {
-		value := SIPRouter{};
-		err := results.Scan(&value.IpAddress,&value.PrivateIpAddress);
+		value := SIPRouter{}
+		err := results.Scan(&value.IpAddress, &value.PrivateIpAddress)
 		if err != nil {
 			return nil, err
 		}
@@ -476,11 +477,11 @@ func GetUserFromDB(id int) (*User, error) {
 	fmt.Printf("looking up user %d\r\n", id)
 	row := db.QueryRow(`SELECT id, username, first_name, last_name, email FROM users WHERE id=?`, id)
 
-	err := row.Scan(&userId, &username, &fname, &lname,  &email)
-	if ( err == sql.ErrNoRows ) {  //create conference
+	err := row.Scan(&userId, &username, &fname, &lname, &email)
+	if err == sql.ErrNoRows { //create conference
 		return nil, err
 	}
-	if ( err != nil ) {  //another error
+	if err != nil { //another error
 		return nil, err
 	}
 
@@ -495,13 +496,13 @@ func GetWorkspaceFromDB(id int) (*Workspace, error) {
 	row := db.QueryRow(`SELECT id, name, creator_id, outbound_macro_id, plan FROM workspaces WHERE id=?`, id)
 
 	err := row.Scan(&workspaceId, &name, &creatorId, &outboundMacroId, &plan)
-	if ( err == sql.ErrNoRows ) {  //create conference
+	if err == sql.ErrNoRows { //create conference
 		return nil, err
 	}
-	if ( err != nil ) {  //another error
+	if err != nil { //another error
 		return nil, err
 	}
-    if reflect.TypeOf(outboundMacroId) == nil {
+	if reflect.TypeOf(outboundMacroId) == nil {
 		return &Workspace{Id: workspaceId, Name: name, CreatorId: creatorId, Plan: plan}, nil
 	}
 	return &Workspace{Id: workspaceId, Name: name, CreatorId: creatorId, OutboundMacroId: int(outboundMacroId.Int64), Plan: plan}, nil
@@ -514,10 +515,10 @@ func GetCallFromDB(id int) (*Call, error) {
 	row := db.QueryRow(`SELECT id, started_at, ended_at, duration FROM calls WHERE id=?`, id)
 
 	err := row.Scan(&callId, &startedAt, &endedAt, &duration)
-	if ( err == sql.ErrNoRows ) {  //create conference
+	if err == sql.ErrNoRows { //create conference
 		return nil, err
 	}
-	if ( err != nil ) {  //another error
+	if err != nil { //another error
 		return nil, err
 	}
 
@@ -532,10 +533,10 @@ func GetDIDFromDB(id int) (*DIDNumber, error) {
 	row := db.QueryRow(`SELECT id, number, monthly_cost, setup_cost FROM did_numbers WHERE id=?`, id)
 
 	err := row.Scan(&didId, &number, &monthlyCost, setupCost)
-	if ( err == sql.ErrNoRows ) {  //create conference
+	if err == sql.ErrNoRows { //create conference
 		return nil, err
 	}
-	if ( err != nil ) {  //another error
+	if err != nil { //another error
 		return nil, err
 	}
 
@@ -543,16 +544,15 @@ func GetDIDFromDB(id int) (*DIDNumber, error) {
 	return did, nil
 }
 
-
 func GetRecordingSpace(id int) (int, error) {
 	var bytes int
 	row := db.QueryRow(`SELECT SUM(size) FROM recordings WHERE workspace_id=?`, id)
 
 	err := row.Scan(&bytes)
-	if ( err == sql.ErrNoRows ) {  //create conference
+	if err == sql.ErrNoRows { //create conference
 		return 0, err
 	}
-	if ( err != nil ) {  //another error
+	if err != nil { //another error
 		return 0, err
 	}
 	return bytes, nil
@@ -562,10 +562,10 @@ func GetFaxCount(id int) (*int, error) {
 	row := db.QueryRow(`SELECT COUNT(*) FROM faxes WHERE workspace_id=?`, id)
 
 	err := row.Scan(&count)
-	if ( err == sql.ErrNoRows ) {  //create conference
+	if err == sql.ErrNoRows { //create conference
 		return nil, err
 	}
-	if ( err != nil ) {  //another error
+	if err != nil { //another error
 		return nil, err
 	}
 	return &count, nil
@@ -581,7 +581,7 @@ func GetWorkspaceByDomain(domain string) (*Workspace, error) {
 	row := db.QueryRow("SELECT id, creator_id, name, byo_enabled, ip_whitelist_disabled FROM workspaces WHERE name=?", workspaceName)
 
 	err := row.Scan(&workspaceId, &creatorId, &name, &byo, &ipWhitelist)
-	if ( err == sql.ErrNoRows ) {  //create conference
+	if err == sql.ErrNoRows { //create conference
 		return nil, err
 	}
 	return &Workspace{Id: workspaceId, CreatorId: creatorId, Name: name, BYOEnabled: byo, IPWhitelistDisabled: ipWhitelist}, nil
@@ -590,43 +590,43 @@ func GetWorkspaceByDomain(domain string) (*Workspace, error) {
 func GetWorkspaceParams(workspaceId int) (*[]WorkspaceParam, error) {
 	// Execute the query
 	results, err := db.Query("SELECT `key`, `value` FROM workspace_params WHERE `workspace_id` = ?", workspaceId)
-    if err != nil {
-		return nil, err;
+	if err != nil {
+		return nil, err
 	}
-  defer results.Close()
-	params := []WorkspaceParam{};
+	defer results.Close()
+	params := []WorkspaceParam{}
 
-    for results.Next() {
-		param := WorkspaceParam{};
-        // for each row, scan the result into our tag composite object
-        err = results.Scan(&param.Key, &param.Value)
-        if err != nil {
+	for results.Next() {
+		param := WorkspaceParam{}
+		// for each row, scan the result into our tag composite object
+		err = results.Scan(&param.Key, &param.Value)
+		if err != nil {
 			return nil, err
 		}
 		params = append(params, param)
 	}
-	return &params, nil;
+	return &params, nil
 }
 
 func GetUserByDomain(domain string) (*WorkspaceCreatorFullInfo, error) {
-	workspace, err := GetWorkspaceByDomain( domain )
+	workspace, err := GetWorkspaceByDomain(domain)
 	if err != nil {
 		return nil, err
 	}
 
 	// Execute the query
-	params, err  := GetWorkspaceParams(workspace.Id)
-    if err != nil {
-		return nil, err;
+	params, err := GetWorkspaceParams(workspace.Id)
+	if err != nil {
+		return nil, err
 	}
-	full := &WorkspaceCreatorFullInfo{ 
-    Id: workspace.CreatorId,
-    Workspace: workspace, 
+	full := &WorkspaceCreatorFullInfo{
+		Id:              workspace.CreatorId,
+		Workspace:       workspace,
 		WorkspaceParams: params,
-		WorkspaceName: workspace.Name,
+		WorkspaceName:   workspace.Name,
 		WorkspaceDomain: fmt.Sprintf("%s.lineblocs.com", workspace.Name),
-		WorkspaceId: workspace.Id,
-		OutboundMacroId: workspace.OutboundMacroId	};
+		WorkspaceId:     workspace.Id,
+		OutboundMacroId: workspace.OutboundMacroId}
 
 	return full, nil
 }
@@ -639,7 +639,7 @@ func GetRecordingFromDB(id int) (*Recording, error) {
 	row := db.QueryRow("SELECT api_id, transcription_ready, transcription_text, size FROM recordings WHERE id=?", id)
 
 	err := row.Scan(&apiId, &ready, &text, &size)
-	if ( err == sql.ErrNoRows ) {  //create conference
+	if err == sql.ErrNoRows { //create conference
 		return nil, err
 	}
 	if ready == 1 {
@@ -647,35 +647,37 @@ func GetRecordingFromDB(id int) (*Recording, error) {
 	}
 	return &Recording{APIId: apiId, Id: id, Size: size}, nil
 }
-//todo move to microservice
-func GetPlanRecordingLimit(workspace* Workspace) (int, error) {
+
+// todo move to microservice
+func GetPlanRecordingLimit(workspace *Workspace) (int, error) {
 	if workspace.Plan == "pay-as-you-go" {
 		return 1024, nil
 	} else if workspace.Plan == "starter" {
-		return 1024*2, nil
+		return 1024 * 2, nil
 	} else if workspace.Plan == "pro" {
-		return 1024*32, nil
+		return 1024 * 32, nil
 	} else if workspace.Plan == "starter" {
-		return 1024*128, nil
+		return 1024 * 128, nil
 	}
 	return 0, nil
 }
-//todo move to microservice
-func GetPlanFaxLimit(workspace* Workspace) (*int, error) {
-	var res* int
+
+// todo move to microservice
+func GetPlanFaxLimit(workspace *Workspace) (*int, error) {
+	var res *int
 	if workspace.Plan == "pay-as-you-go" {
 		*res = 100
 	} else if workspace.Plan == "starter" {
 		*res = 100
 	} else if workspace.Plan == "pro" {
-		res =  nil
+		res = nil
 	} else if workspace.Plan == "starter" {
 		res = nil
 	}
 	return res, nil
 }
-func SendLogRoutineEmail(log* LogRoutine, user* User, workspace* Workspace) error {
-	mg := mailgun.NewMailgun(os.Getenv("MAILGUN_DOMAIN"),os.Getenv("MAILGUN_API_KEY"))
+func SendLogRoutineEmail(log *LogRoutine, user *User, workspace *Workspace) error {
+	mg := mailgun.NewMailgun(os.Getenv("MAILGUN_DOMAIN"), os.Getenv("MAILGUN_API_KEY"))
 	m := mg.NewMessage(
 		"Lineblocs <monitor@lineblocs.com>",
 		"Debug Monitor",
@@ -684,7 +686,6 @@ func SendLogRoutineEmail(log* LogRoutine, user* User, workspace* Workspace) erro
 	m.AddCC("contact@lineblocs.com")
 	//m.AddBCC("bar@example.com")
 
-
 	body := `<html>
 <head></head>
 <body>
@@ -692,7 +693,7 @@ func SendLogRoutineEmail(log* LogRoutine, user* User, workspace* Workspace) erro
 	<h5>` + log.Title + `</h5>
 	<p>` + log.Report + `</p>
 </body>
-</html>`;
+</html>`
 
 	m.SetHtml(body)
 	//m.AddAttachment("files/test.jpg")
@@ -708,11 +709,11 @@ func SendLogRoutineEmail(log* LogRoutine, user* User, workspace* Workspace) erro
 	return nil
 }
 
-func StartLogRoutine(log* LogRoutine) (*string, error) {
-	var user* User;
-	var workspace* Workspace;
+func StartLogRoutine(log *LogRoutine) (*string, error) {
+	var user *User
+	var workspace *Workspace
 
-    user, err := GetUserFromDB(log.UserId)
+	user, err := GetUserFromDB(log.UserId)
 	if err != nil {
 		fmt.Printf("could not get user..")
 		return nil, err
@@ -762,11 +763,11 @@ func ShouldUseProviderNext(name string, ipPrivate string) (bool, error) {
 	return true, nil
 }
 func CheckCIDRMatch(sourceIp string, fullIp string) (bool, error) {
-	_, net1, err :=  net.ParseCIDR(sourceIp + "/32")
+	_, net1, err := net.ParseCIDR(sourceIp + "/32")
 	if err != nil {
 		return false, err
 	}
-	_, net2, err :=  net.ParseCIDR(fullIp)
+	_, net2, err := net.ParseCIDR(fullIp)
 	if err != nil {
 		return false, err
 	}
@@ -782,23 +783,23 @@ func CheckPSTNIPWhitelist(did string, sourceIp string) (bool, error) {
 	INNER JOIN did_numbers ON did_numbers.workspace_id = sip_providers_whitelist_ips.workspace_id
 	WHERE did_numbers.api_number = ?
 	`, did)
-    if err != nil {
+	if err != nil {
 		return false, err
 	}
-  defer results.Close()
-    for results.Next() {
+	defer results.Close()
+	for results.Next() {
 		var ipAddr string
 		var ipAddrRange string
 		err = results.Scan(&ipAddr, &ipAddrRange)
 		if err != nil {
-		  return false, err
+			return false, err
 
 		}
 		fullIp := ipAddr + ipAddrRange
-		match, err := CheckCIDRMatch(sourceIp, fullIp) 
+		match, err := CheckCIDRMatch(sourceIp, fullIp)
 		if err != nil {
-		  fmt.Printf("error matching CIDR source %s, full %s\r\n", sourceIp, fullIp)
-		  continue
+			fmt.Printf("error matching CIDR source %s, full %s\r\n", sourceIp, fullIp)
+			continue
 		}
 		if match {
 			return true, nil
@@ -815,11 +816,11 @@ func CheckBYOPSTNIPWhitelist(did string, sourceIp string) (bool, error) {
 	INNER JOIN byo_did_numbers ON byo_did_numbers.workspace_id = byo_carriers.workspace_id
 	WHERE byo_did_numbers.number = ?
 	`, did)
-    if err != nil {
+	if err != nil {
 		return false, err
 	}
-  defer results.Close()
-    for results.Next() {
+	defer results.Close()
+	for results.Next() {
 		var ipAddr string
 		var ipAddrRange string
 		err = results.Scan(&ipAddr, &ipAddrRange)
@@ -827,10 +828,10 @@ func CheckBYOPSTNIPWhitelist(did string, sourceIp string) (bool, error) {
 			return false, err
 		}
 		fullIp := ipAddr + ipAddrRange
-		match, err := CheckCIDRMatch(sourceIp, fullIp) 
+		match, err := CheckCIDRMatch(sourceIp, fullIp)
 		if err != nil {
-		  fmt.Printf("error matching CIDR source %s, full %s\r\n", sourceIp, fullIp)
-		  continue
+			fmt.Printf("error matching CIDR source %s, full %s\r\n", sourceIp, fullIp)
+			continue
 		}
 		if match {
 			return true, nil
@@ -839,7 +840,7 @@ func CheckBYOPSTNIPWhitelist(did string, sourceIp string) (bool, error) {
 	return false, nil
 }
 
-func FinishValidation(number string, didWorkspaceId string) (bool,error) {
+func FinishValidation(number string, didWorkspaceId string) (bool, error) {
 	num, err := libphonenumber.Parse(number, "US")
 	if err != nil {
 		return false, err
@@ -847,34 +848,34 @@ func FinishValidation(number string, didWorkspaceId string) (bool,error) {
 	formattedNum := libphonenumber.Format(num, libphonenumber.E164)
 	row := db.QueryRow("SELECT id FROM `blocked_numbers` WHERE `workspace_id` = ? AND `number` = ?", didWorkspaceId, formattedNum)
 	var id string
-	err = row.Scan(&id);
-	if ( err == sql.ErrNoRows ) {  //create conference
-		return true,nil
+	err = row.Scan(&id)
+	if err == sql.ErrNoRows { //create conference
+		return true, nil
 	}
 	if err != nil {
-		return false,err
+		return false, err
 	}
-	return false,nil
+	return false, nil
 }
 func CheckFreeTrialStatus(plan string, started time.Time) string {
-	if plan  == "trial" {
+	if plan == "trial" {
 		now := time.Now()
 		//make configurable
 		expireDays := 10
 		expireHours := expireDays * 24
 		started.Add(time.Hour * time.Duration(expireHours))
-		if started.After( now ) {
-			return "expired";
+		if started.After(now) {
+			return "expired"
 		}
-		return "pending-expiry";
+		return "pending-expiry"
 	}
-	return "not-applicable";
+	return "not-applicable"
 }
 func CheckIsMakingOutboundCallFirstTime(call Call) {
 	var id string
 	row := db.QueryRow("SELECT id FROM `calls` WHERE `workspace_id` = ? AND `from` LIKE '?%s' AND `direction = 'outbound'", call.WorkspaceId, call.From, call.Direction)
-	err := row.Scan(&id);
-	if ( err != sql.ErrNoRows ) {  //create conference
+	err := row.Scan(&id)
+	if err != sql.ErrNoRows { //create conference
 		// all ok
 		return
 	}
@@ -883,33 +884,33 @@ func CheckIsMakingOutboundCallFirstTime(call Call) {
 	if err != nil {
 		panic(err)
 	}
-	body := `A call was made to ` + call.To + ` for the first time on your account.`;
+	body := `A call was made to ` + call.To + ` for the first time on your account.`
 	SendEmail(user, "First call to destination country", body)
 }
 func SendEmail(user *User, subject string, body string) {
 }
-func SomeLoadBalancingLogic() (*MediaServer,error) {
-	results, err := db.Query("SELECT id,ip_address,private_ip_address,live_call_count,live_cpu_pct_used,live_status FROM media_servers");
-    if err != nil {
-		return nil,err
+func SomeLoadBalancingLogic() (*MediaServer, error) {
+	results, err := db.Query("SELECT id,ip_address,private_ip_address,live_call_count,live_cpu_pct_used,live_status FROM media_servers")
+	if err != nil {
+		return nil, err
 	}
-  defer results.Close()
-    for results.Next() {
-		value := MediaServer{};
-		err = results.Scan(&value.Id,&value.IpAddress,&value.PrivateIpAddress,&value.LiveCallCount,&value.LiveCPUPCTUsed,&value.Status);
+	defer results.Close()
+	for results.Next() {
+		value := MediaServer{}
+		err = results.Scan(&value.Id, &value.IpAddress, &value.PrivateIpAddress, &value.LiveCallCount, &value.LiveCPUPCTUsed, &value.Status)
 		if err != nil {
-			return nil,err
+			return nil, err
 		}
-		return &value,nil
+		return &value, nil
 	}
-	return nil,nil
+	return nil, nil
 }
 func DoVerifyCaller(workspaceId int, number string) (bool, error) {
-	var workspace* Workspace;
+	var workspace *Workspace
 
-  if !settings.ValidateCallerId { 
-    return true, nil
-  }
+	if !settings.ValidateCallerId {
+		return true, nil
+	}
 
 	workspace, err := GetWorkspaceFromDB(workspaceId)
 	if err != nil {
@@ -925,15 +926,15 @@ func DoVerifyCaller(workspaceId int, number string) (bool, error) {
 	fmt.Printf("domain isr %s\r\n", workspace.Name)
 	var id string
 	row := db.QueryRow("SELECT id FROM `did_numbers` WHERE `number` = ? AND `workspace_id` = ?", formattedNum, workspace.Id)
-	err = row.Scan(&id);
-	if ( err != sql.ErrNoRows ) {  //create conference
+	err = row.Scan(&id)
+	if err != sql.ErrNoRows { //create conference
 		return true, nil
 	}
 	return false, nil
 }
 
 func GetQueryVariable(r *http.Request, key string) *string {
-	vals := r.URL.Query() // Returns a url.Values, which is a map[string][]string
+	vals := r.URL.Query()    // Returns a url.Values, which is a map[string][]string
 	results, ok := vals[key] // Note type, not ID. ID wasn't specified anywhere.
 	var value *string
 	if ok {
@@ -943,7 +944,7 @@ func GetQueryVariable(r *http.Request, key string) *string {
 	}
 	return value
 }
-func UploadS3(folder string, name string, file multipart.File) (error) {
+func UploadS3(folder string, name string, file multipart.File) error {
 	bucket := "lineblocs"
 	key := folder + "/" + name
 	// The session the S3 Uploader will use
@@ -974,23 +975,22 @@ func CreateS3URL(folder string, id string) string {
 }
 
 func NoContent(w http.ResponseWriter, r *http.Request) {
-  // Set up any headers you want here.
-  w.WriteHeader(http.StatusNoContent) // send the headers with a 204 response code.
+	// Set up any headers you want here.
+	w.WriteHeader(http.StatusNoContent) // send the headers with a 204 response code.
 }
 func ToCents(dollars float64) int {
 	result := dollars * 100
-	return int( result )
+	return int(result)
 }
 
 func GetServicePlans() ([]ServicePlan, error) {
-	plans := []ServicePlan{};
-
+	plans := []ServicePlan{}
 
 	extras := make(map[string]PlanValue)
 	plans = append(plans, createPlan("pay-as-you-go", extras))
 
 	extras = make(map[string]PlanValue)
-	extras["BaseCosts"] = PlanValue{ ValueFloat: 24.99 }
+	extras["BaseCosts"] = PlanValue{ValueFloat: 24.99}
 	extras["MinutesPerMonth"] = PlanValue{ValueFloat: 200.0}
 	extras["RecordingSpace"] = PlanValue{ValueFloat: float64(convertGbToKb(2))}
 	extras["ImIntegrations"] = PlanValue{ValueBool: true}
@@ -998,7 +998,7 @@ func GetServicePlans() ([]ServicePlan, error) {
 	plans = append(plans, createPlan("starter", extras))
 
 	extras = make(map[string]PlanValue)
-	extras["BaseCosts"] = PlanValue{ ValueFloat: 49.99 }
+	extras["BaseCosts"] = PlanValue{ValueFloat: 49.99}
 	extras["MinutesPerMonth"] = PlanValue{ValueFloat: 250.0}
 	extras["RecordingSpace"] = PlanValue{ValueFloat: float64(convertGbToKb(32))}
 	extras["Extensions"] = PlanValue{ValueInt: 25}
@@ -1015,7 +1015,7 @@ func GetServicePlans() ([]ServicePlan, error) {
 	plans = append(plans, createPlan("pro", extras))
 
 	extras = make(map[string]PlanValue)
-	extras["BaseCosts"] = PlanValue{ ValueFloat: 69.99 }
+	extras["BaseCosts"] = PlanValue{ValueFloat: 69.99}
 	extras["MinutesPerMonth"] = PlanValue{ValueFloat: 500.0}
 	extras["RecordingSpace"] = PlanValue{ValueFloat: float64(convertGbToKb(128))}
 	extras["Extensions"] = PlanValue{ValueInt: 100}
@@ -1034,18 +1034,17 @@ func GetServicePlans() ([]ServicePlan, error) {
 	extras["AiCalls"] = PlanValue{ValueBool: true}
 	plans = append(plans, createPlan("ultimate", extras))
 
-
 	return plans, nil
 }
 
 func GetServicePlans2() ([]ServicePlan, error) {
-	results, err := db.Query(`SELECT monthly_cost_cents, minutes_per_month, recording_space, extensions, im_integrations, voice_analytics, fraud_protection, crm_integrations, programmable_toolkit, sso, provisioner, vpn, multiple_sip_domains, bring_carrier, 247_support, ai_calls, pay_as_you_go, annual_cost_cents, monthly_charge_cents FROM service_plans`)
+	results, err := db.Query(`SELECT monthly_cost_cents, minutes_per_month, recording_space, extensions, im_integrations, voice_analytics, fraud_protection, crm_integrations, programmable_toolkit, sso, provisioner, vpn, multiple_sip_domains, bring_carrier, 247_support, ai_calls, pay_as_you_go FROM service_plans`)
     if err != nil {
 		return nil, err;
 	}
 	defer results.Close()
 	plans := make([]ServicePlan, 0)
-    for results.Next() {
+	for results.Next() {
 		plan := ServicePlan{}
 		results.Scan(
 			&plan.BaseCosts,
@@ -1065,10 +1064,7 @@ func GetServicePlans2() ([]ServicePlan, error) {
 			&plan.CallCenter,
 			&plan.TwentyFourSevenSupport,
 			&plan.AiCalls,
-			&plan.PayAsYouGo,
-			&plan.AnnualCostCents,
-			&plan.MonthlyChargeCents,
-		)
+			&plan.PayAsYouGo)
 		plans = append( plans, plan )
 	}
 	return plans, nil
@@ -1080,57 +1076,57 @@ func GetWorkspaceBillingInfo(workspace *Workspace) (*WorkspaceBillingInfo, error
 	chargesThisMonth := 0.0
 	accountBalance := 0.0
 	estimatedBalance := 0.0
-	results, err := db.Query(`SELECT id,cents,created_at FROM users_credits WHERE workspace_id = ?`, workspace.Id) 
+	results, err := db.Query(`SELECT id,cents,created_at FROM users_credits WHERE workspace_id = ?`, workspace.Id)
 
-    if err != nil {
-		return nil, err;
+	if err != nil {
+		return nil, err
 	}
 	defer results.Close()
 	credits := make([]UserCredit, 0)
-    for results.Next() {
-		credit := UserCredit{};
+	for results.Next() {
+		credit := UserCredit{}
 		results.Scan(&credit.Id, &credit.Cents, &credit.CreatedAt)
-		credits = append(credits,credit)
+		credits = append(credits, credit)
 	}
 
-	results, err = db.Query(`SELECT id,cents,created_at FROM users_debits WHERE workspace_id = ?`, workspace.Id) 
+	results, err = db.Query(`SELECT id,cents,created_at FROM users_debits WHERE workspace_id = ?`, workspace.Id)
 
-    if err != nil {
-		return nil, err;
+	if err != nil {
+		return nil, err
 	}
 	defer results.Close()
 	debits := make([]UserDebit, 0)
-    for results.Next() {
-		debit := UserDebit{};
+	for results.Next() {
+		debit := UserDebit{}
 		results.Scan(&debit.Id, &debit.Cents, &debit.CreatedAt)
-		debits = append(debits,debit)
+		debits = append(debits, debit)
 	}
 
-	results, err = db.Query(`SELECT id,cents,source,status,created_at FROM users_invoices WHERE workspace_id = ?`, workspace.Id) 
+	results, err = db.Query(`SELECT id,cents,source,status,created_at FROM users_invoices WHERE workspace_id = ?`, workspace.Id)
 
-    if err != nil {
-		return nil, err;
+	if err != nil {
+		return nil, err
 	}
 	defer results.Close()
 	invoices := make([]UserInvoice, 0)
-    for results.Next() {
-		invoice := UserInvoice{};
-		results.Scan(&invoice.Id, &invoice.Cents, &invoice.Source, &invoice.Status,&invoice.CreatedAt)
-		invoices = append(invoices,invoice)
+	for results.Next() {
+		invoice := UserInvoice{}
+		results.Scan(&invoice.Id, &invoice.Cents, &invoice.Source, &invoice.Status, &invoice.CreatedAt)
+		invoices = append(invoices, invoice)
 	}
 
 	current := time.Now()
-	start := now.BeginningOfMonth()    // 2013-11-01 00:00:00 Fri
-	end := now.EndOfMonth()          // 2013-11-30 23:59:59.999999999 Sat
+	start := now.BeginningOfMonth() // 2013-11-01 00:00:00 Fri
+	end := now.EndOfMonth()         // 2013-11-30 23:59:59.999999999 Sat
 	next := current.AddDate(0, 1, 0)
 	remainingBalance = 0
 	for _, credit := range credits {
 		remainingBalance += credit.Cents
 	}
 	for _, debit := range debits {
-		valid, err := inMonth(debit.CreatedAt, start, end) 
+		valid, err := inMonth(debit.CreatedAt, start, end)
 		if err != nil {
-			return nil, err;
+			return nil, err
 		}
 		if valid {
 			chargesThisMonth += debit.Cents
@@ -1142,12 +1138,12 @@ func GetWorkspaceBillingInfo(workspace *Workspace) (*WorkspaceBillingInfo, error
 			accountBalance += invoice.Cents
 		}
 		if invoice.Source == "CREDITS" {
-            remainingBalance -= invoice.Cents
-        }
+			remainingBalance -= invoice.Cents
+		}
 	}
 	estimatedBalance = chargesThisMonth + accountBalance
 	nextInvoiceDue := next.Format("2006 Jan 02")
-	thisInvoiceDue :=start.Format("2006 Jan 02")
+	thisInvoiceDue := start.Format("2006 Jan 02")
 	info.ChargesThisMonth = chargesThisMonth
 	info.AccountBalance = accountBalance
 	info.EstimatedBalance = estimatedBalance
@@ -1160,14 +1156,14 @@ func GetWorkspaceBillingInfo(workspace *Workspace) (*WorkspaceBillingInfo, error
 func GetBaseCosts() (*BaseCosts, error) {
 	recordingPerByte := 0.000000000000999
 	faxPerUsed := 0.000000000000999
-	costs := BaseCosts{ RecordingsPerByte: recordingPerByte, FaxPerUsed: faxPerUsed }
+	costs := BaseCosts{RecordingsPerByte: recordingPerByte, FaxPerUsed: faxPerUsed}
 	return &costs, nil
 }
 func GetBaseConfig() (*BaseConfig, error) {
-	config := BaseConfig{ StripeKey: os.Getenv("STRIPE_KEY") }
+	config := BaseConfig{StripeKey: os.Getenv("STRIPE_KEY")}
 	return &config, nil
 }
-func ChargeCustomer(user*User, workspace*Workspace, cents int, desc string) (error) {
+func ChargeCustomer(user *User, workspace *Workspace, cents int, desc string) error {
 	config, err := GetBaseConfig()
 	if err != nil {
 		return err
@@ -1181,10 +1177,10 @@ func ChargeCustomer(user*User, workspace*Workspace, cents int, desc string) (err
 
 	err = row.Scan(&id, &tokenId)
 	// `source` is obtained with Stripe.js; see https://stripe.com/docs/payments/accept-a-payment-charges#web-create-token
-	params := &stripe.ChargeParams{ Amount: stripe.Int64(int64(cents)),
-		Currency: stripe.String(string(stripe.CurrencyUSD)),
+	params := &stripe.ChargeParams{Amount: stripe.Int64(int64(cents)),
+		Currency:    stripe.String(string(stripe.CurrencyUSD)),
 		Description: stripe.String(desc),
-		Source: &stripe.SourceParams{Token: stripe.String(tokenId)} }
+		Source:      &stripe.SourceParams{Token: stripe.String(tokenId)}}
 	_, err = charge.New(params)
 	if err != nil {
 		return err
@@ -1202,8 +1198,8 @@ func inMonth(created string, start time.Time, end time.Time) (bool, error) {
 	if start.Before(end) {
 		result = !check.Before(start) && !check.After(end)
 		return result, nil
-    }
-    if start.Equal(end) {
+	}
+	if start.Equal(end) {
 		result = check.Equal(start)
 		return result, nil
 	}
@@ -1211,40 +1207,40 @@ func inMonth(created string, start time.Time, end time.Time) (bool, error) {
 	result = !start.After(check) || !end.Before(check)
 	return result, nil
 }
-func convertGbToKb( gb int ) (int) {
+func convertGbToKb(gb int) int {
 	return gb * 1024
 }
-func convertMinutesToSeconds( min int ) (int) {
+func convertMinutesToSeconds(min int) int {
 	return min * 60
 }
 
-func createPlan(name string, extras map[string]PlanValue) (ServicePlan) {
-	plan := ServicePlan{ BaseCosts: 0,
-           MinutesPerMonth: 0.0,
-           Extensions: 5,
-           Ports: 0,
-           RecordingSpace: 1024.0,
-           Fax: 100,
-           Porting: true,
-           CallingBetweenExt: true,
-           StandardCallFeat: true,
-           VoicemailTranscriptions: false,
-           ImIntegrations: false,
-           ProductivityIntegrations: false,
-           VoiceAnalytics: false,
-           FraudProtection: false,
-           CrmIntegrations: false,
-           ProgrammableToolkit: false,
-           Sso: false,
-           Provisioner: false,
-           Vpn: false,
-           MultipleSipDomains: false,
-           BringCarrier: false,
-           CallCenter: false,
-           Config247Support: false,
-		   AiCalls: false };
+func createPlan(name string, extras map[string]PlanValue) ServicePlan {
+	plan := ServicePlan{BaseCosts: 0,
+		MinutesPerMonth:          0.0,
+		Extensions:               5,
+		Ports:                    0,
+		RecordingSpace:           1024.0,
+		Fax:                      100,
+		Porting:                  true,
+		CallingBetweenExt:        true,
+		StandardCallFeat:         true,
+		VoicemailTranscriptions:  false,
+		ImIntegrations:           false,
+		ProductivityIntegrations: false,
+		VoiceAnalytics:           false,
+		FraudProtection:          false,
+		CrmIntegrations:          false,
+		ProgrammableToolkit:      false,
+		Sso:                      false,
+		Provisioner:              false,
+		Vpn:                      false,
+		MultipleSipDomains:       false,
+		BringCarrier:             false,
+		CallCenter:               false,
+		Config247Support:         false,
+		AiCalls:                  false}
 
-		plan.Name = name
+	plan.Name = name
 	if val, ok := extras["BaseCosts"]; ok {
 		//do something here
 		plan.BaseCosts = val.ValueFloat
@@ -1265,7 +1261,7 @@ func createPlan(name string, extras map[string]PlanValue) (ServicePlan) {
 		//do something here
 		plan.Fax = val.ValueInt
 	}
-    if val, ok := extras["Porting"]; ok {
+	if val, ok := extras["Porting"]; ok {
 		//do something here
 		plan.Porting = val.ValueBool
 	}
@@ -1341,7 +1337,7 @@ func createPlan(name string, extras map[string]PlanValue) (ServicePlan) {
 	return plan
 }
 
-func UpdateLiveStat(server *MediaServer, stat string, value string) (error) {
+func UpdateLiveStat(server *MediaServer, stat string, value string) error {
 	db, err := CreateDBConn()
 	if err != nil {
 		fmt.Printf("could not create DB..")
@@ -1349,7 +1345,7 @@ func UpdateLiveStat(server *MediaServer, stat string, value string) (error) {
 		return err
 	}
 
-	stmt, err := db.Prepare("UPDATE media_servers SET " + stat + " = ? WHERE id = ?");
+	stmt, err := db.Prepare("UPDATE media_servers SET " + stat + " = ? WHERE id = ?")
 
 	if err != nil {
 		fmt.Printf("could not prepare query..")
@@ -1366,8 +1362,7 @@ func UpdateLiveStat(server *MediaServer, stat string, value string) (error) {
 	return nil
 }
 
-
-func UpdateRouterLiveStat(router *SIPRouter, stat string, value string) (error) {
+func UpdateRouterLiveStat(router *SIPRouter, stat string, value string) error {
 	db, err := CreateDBConn()
 	if err != nil {
 		fmt.Printf("could not create DB..")
@@ -1375,7 +1370,7 @@ func UpdateRouterLiveStat(router *SIPRouter, stat string, value string) (error) 
 		return err
 	}
 
-	stmt, err := db.Prepare("UPDATE sip_routers SET " + stat + " = ? WHERE id = ?");
+	stmt, err := db.Prepare("UPDATE sip_routers SET " + stat + " = ? WHERE id = ?")
 
 	if err != nil {
 		fmt.Printf("could not prepare query..")
@@ -1390,4 +1385,54 @@ func UpdateRouterLiveStat(router *SIPRouter, stat string, value string) (error) 
 		return err
 	}
 	return nil
+}
+
+func InitLogrus(logDestination string) {
+	log = logrus.New()
+	//Default Configure for console
+	log = &logrus.Logger{
+		Out:   os.Stdout,
+		Level: logrus.DebugLevel,
+		Formatter: &easy.Formatter{
+			TimestampFormat: "2006-01-02 15:04:05",
+			LogFormat:       "%lvl%: %time% - %msg%\n",
+		},
+		Hooks: log.Hooks,
+	}
+	dests := strings.Split(logDestination, ",")
+
+	for _, dest := range dests {
+		switch dest {
+		case "file":
+			logFile, err := os.OpenFile("log.txt", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
+			if err != nil {
+				panic(err)
+			}
+			mw := io.MultiWriter(os.Stdout, logFile)
+			log.SetOutput(mw)
+		case "cloudwatch":
+			cfg, err := config.LoadDefaultConfig(context.Background())
+			if err != nil {
+				log.Fatalf("Could not load AWS config: %v", err)
+			}
+			client := cloudwatchlogs.NewFromConfig(cfg)
+
+			hook, err := logruscloudwatch.New(client, nil)
+			if err != nil {
+				log.Fatalf("Could not create CloudWatch hook: %v", err)
+			}
+			log.AddHook(hook)
+		case "logstash":
+			conn, err := net.Dial("tcp", "logstash.mycompany.net:8911")
+			if err != nil {
+				log.Fatal(err)
+			}
+			hook := logrustash.New(conn, logrustash.DefaultFormatter(logrus.Fields{"type": "myappName"}))
+			log.Hooks.Add(hook)
+		}
+	}
+}
+
+func Log(level logrus.Level, message string) {
+	log.Log(level, message)
 }
