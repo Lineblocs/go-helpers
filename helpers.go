@@ -260,6 +260,8 @@ type ServicePlan struct {
 	Name string `json:"name"`
 	BaseCosts float64 `json:"base_costs"`
 	MinutesPerMonth float64 `json:"minutes_per_month"`
+	MonthlyChargeCents int `json:"monthly_charge_cents"`
+	AnnualCostCents int `json:"annual_cost_cents"`
 	Extensions int `json:"extensions"`
 	Ports int `json:"ports"`
 	Porting bool `json:"portiing"`
@@ -1038,7 +1040,7 @@ func GetServicePlans() ([]ServicePlan, error) {
 }
 
 func GetServicePlans2() ([]ServicePlan, error) {
-	results, err := db.Query(`SELECT monthly_cost_cents, minutes_per_month, recording_space, extensions, im_integrations, voice_analytics, fraud_protection, crm_integrations, programmable_toolkit, sso, provisioner, vpn, multiple_sip_domains, bring_carrier, 247_support, ai_calls, pay_as_you_go FROM service_plans`)
+	results, err := db.Query(`SELECT monthly_cost_cents, minutes_per_month, recording_space, extensions, im_integrations, voice_analytics, fraud_protection, crm_integrations, programmable_toolkit, sso, provisioner, vpn, multiple_sip_domains, bring_carrier, 247_support, ai_calls, pay_as_you_go, annual_cost_cents, monthly_charge_cents FROM service_plans`)
     if err != nil {
 		return nil, err;
 	}
@@ -1064,7 +1066,10 @@ func GetServicePlans2() ([]ServicePlan, error) {
 			&plan.CallCenter,
 			&plan.TwentyFourSevenSupport,
 			&plan.AiCalls,
-			&plan.PayAsYouGo)
+			&plan.PayAsYouGo,
+			&plan.AnnualCostCents,
+			&plan.MonthlyChargeCents,
+		)
 		plans = append( plans, plan )
 	}
 	return plans, nil
