@@ -158,6 +158,8 @@ type Workspace struct {
 	IPWhitelistDisabled bool   `json:"ip_whitelist_disabled"`
 	OutboundMacroId     int    `json:"outbound_macro_id"`
 	Plan                string `json:"plan"`
+	BillingCountryId                int `json:"billing_country_id"`
+	BillingRegionId                int `json:"billing_region_id"`
 }
 type UserCredit struct {
 	Id        int     `json:"id"`
@@ -495,9 +497,11 @@ func GetWorkspaceFromDB(id int) (*Workspace, error) {
 	var creatorId int
 	var outboundMacroId sql.NullInt64
 	var plan string
-	row := db.QueryRow(`SELECT id, name, creator_id, outbound_macro_id, plan FROM workspaces WHERE id=?`, id)
+	var billingCountryId int
+	var billingRegionId int
+	row := db.QueryRow(`SELECT id, name, creator_id, outbound_macro_id, plan, billing_country_id, billing_region_id FROM workspaces WHERE id=?`, id)
 
-	err := row.Scan(&workspaceId, &name, &creatorId, &outboundMacroId, &plan)
+	err := row.Scan(&workspaceId, &name, &creatorId, &outboundMacroId, &plan, &billingCountryId, &billingRegionId)
 	if err == sql.ErrNoRows { //create conference
 		return nil, err
 	}
@@ -505,9 +509,9 @@ func GetWorkspaceFromDB(id int) (*Workspace, error) {
 		return nil, err
 	}
 	if reflect.TypeOf(outboundMacroId) == nil {
-		return &Workspace{Id: workspaceId, Name: name, CreatorId: creatorId, Plan: plan}, nil
+		return &Workspace{Id: workspaceId, Name: name, CreatorId: creatorId, Plan: plan, BillingCountryId: billingCountryId, BillingRegionId: billingRegionId}, nil
 	}
-	return &Workspace{Id: workspaceId, Name: name, CreatorId: creatorId, OutboundMacroId: int(outboundMacroId.Int64), Plan: plan}, nil
+	return &Workspace{Id: workspaceId, Name: name, CreatorId: creatorId, OutboundMacroId: int(outboundMacroId.Int64), Plan: plan, BillingCountryId: billingCountryId, BillingRegionId: billingRegionId}, nil
 }
 func GetCallFromDB(id int) (*Call, error) {
 	var callId int
