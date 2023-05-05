@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	//"errors"
+	"errors"
 	"database/sql"
 	"fmt"
 	"mime/multipart"
@@ -335,6 +335,10 @@ type SIPRouter struct {
 	Node             *smudge.Node
 }
 
+type CustomizationSettings struct {
+	InvoiceDueDateEnabled             int    `json:"invoice_due_date_enabled"`
+	InvoiceDueNumDays             int    `json:"invoice_due_num_days"`
+}
 var db *sql.DB
 
 // var servers []*MediaServer;
@@ -548,6 +552,22 @@ func GetDIDFromDB(id int) (*DIDNumber, error) {
 
 	did := &DIDNumber{Number: number, MonthlyCost: monthlyCost, SetupCost: setupCost}
 	return did, nil
+}
+
+func GetCustomizationSettings() (*CustomizationSettings, error) {
+	results, err := db.Query("SELECT invoice_due_date_enabled, invoice_due_num_days FROM customizations")
+	if err != nil {
+		return nil, err
+	}
+	defer results.Close()
+	for results.Next() {
+		value := CustomizationSettings{}
+		//err = results.Scan(&value.Id, &value.IpAddress, &value.PrivateIpAddress, &value.LiveCallCount, &value.LiveCPUPCTUsed, &value.Status)
+		results.Scan(&value.InvoiceDueDateEnabled, &value.InvoiceDueNumDays)
+
+		return &value, nil
+	}
+	return nil, errors.New("fatal error: no customizations record exists")
 }
 
 func GetRecordingSpace(id int) (int, error) {
