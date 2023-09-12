@@ -32,6 +32,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stripe/stripe-go/v71"
 	"github.com/stripe/stripe-go/v71/charge"
+	"github.com/go-redis/redis"
 	easy "github.com/t-tomalak/logrus-easy-formatter"
 	libphonenumber "github.com/ttacon/libphonenumber"
 )
@@ -340,6 +341,7 @@ type CustomizationSettings struct {
 	InvoiceDueNumDays             int    `json:"invoice_due_num_days"`
 }
 var db *sql.DB
+var rdb *redis.Client
 
 // var servers []*MediaServer;
 var settings *GlobalSettings
@@ -362,6 +364,21 @@ func CreateDBConn() (*sql.DB, error) {
 	}
 	db.SetMaxOpenConns(10)
 	return db, nil
+}
+
+func CreateRedisConn() (*redis.Client, error) {
+	if rdb != nil {
+		return rdb, nil
+	}
+	redis_host := os.Getenv("REDIS_HOST")
+	redis_port := os.Getenv("REDIS_PORT")
+	redis_pass := os.Getenv("REDIS_PASS")
+    rdb = redis.NewClient(&redis.Options{
+        Addr:     redis_host+":"+redis_port,
+        Password: redis_pass, // no password set
+        DB:       0,  // use default DB
+    })
+	return rdb, nil
 }
 
 func CreateAPIID(prefix string) string {
