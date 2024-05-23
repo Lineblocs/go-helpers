@@ -340,6 +340,8 @@ type CustomizationSettings struct {
 	InvoiceDueDateEnabled             int    `json:"invoice_due_date_enabled"`
 	InvoiceDueNumDays             int    `json:"invoice_due_num_days"`
 	BillingFrequency             string    `json:"billing_frequency"`
+	CustomerSatisfactionSurveyEnabled   int    `json:"customer_satisfaction_survey_enabled"`
+	CustomerSatisfactionSurveyUrl   string    `json:"customer_satisfaction_survey_enabled"`
 }
 var db *sql.DB
 var rdb *redis.Client
@@ -494,6 +496,27 @@ func CalculateSTTCosts(recordingLength float64) float64 {
 	var result float64 = 0.006 * billable
 	return result
 }
+
+
+func CreateUser(userId int, username string, fname string, lname string, email string) (*User) {
+	return &User{Id: userId, Username: username, FirstName: fname, LastName: lname, Email: email};
+}
+
+func CreateWorkspace(workspaceId int, name string, creatorId int, outboundMacroId *int, plan string, billingCountryId *int, billingRegionId *int) (*Workspace) {
+	workspace := Workspace{Id: workspaceId, Name: name, CreatorId: creatorId, Plan: plan}
+	if outboundMacroId != nil {
+		workspace.OutboundMacroId = *outboundMacroId
+	}
+	if billingCountryId != nil {
+		workspace.BillingCountryId = *billingCountryId
+	}
+	if billingRegionId != nil {
+		workspace.BillingRegionId = *billingRegionId
+	}
+
+	return &workspace
+}
+
 func GetUserFromDB(id int) (*User, error) {
 	var userId int
 	var username string
@@ -511,8 +534,9 @@ func GetUserFromDB(id int) (*User, error) {
 		return nil, err
 	}
 
-	return &User{Id: userId, Username: username, FirstName: fname, LastName: lname, Email: email}, nil
+	return CreateUser(userId, username, fname, lname, email), nil
 }
+
 func GetWorkspaceFromDB(id int) (*Workspace, error) {
 	var workspaceId int
 	var name string
@@ -530,10 +554,14 @@ func GetWorkspaceFromDB(id int) (*Workspace, error) {
 	if err != nil { //another error
 		return nil, err
 	}
+
+	var macroIdValue int
 	if reflect.TypeOf(outboundMacroId) == nil {
-		return &Workspace{Id: workspaceId, Name: name, CreatorId: creatorId, Plan: plan, BillingCountryId: billingCountryId, BillingRegionId: billingRegionId}, nil
+		return CreateWorkspace(workspaceId, name, creatorId, &macroIdValue, plan, &billingCountryId, &billingRegionId), nil
 	}
-	return &Workspace{Id: workspaceId, Name: name, CreatorId: creatorId, OutboundMacroId: int(outboundMacroId.Int64), Plan: plan, BillingCountryId: billingCountryId, BillingRegionId: billingRegionId}, nil
+
+	macroIdValue = int(outboundMacroId.Int64)
+	return CreateWorkspace(workspaceId, name, creatorId, &macroIdValue, plan, &billingCountryId, &billingRegionId), nil
 }
 func GetCallFromDB(id int) (*Call, error) {
 	var callId int
@@ -573,7 +601,7 @@ func GetDIDFromDB(id int) (*DIDNumber, error) {
 }
 
 func GetCustomizationSettings() (*CustomizationSettings, error) {
-	results, err := db.Query("SELECT invoice_due_date_enabled, invoice_due_num_days, billing_frequency FROM customizations")
+	results, err := db.Query("SELECT invoice_due_date_enabled, invoice_due_num_days, billing_frequency, customer_satisfaction_survey_enabled, customer_satisfaction_survey_enabled FROM customizations")
 	if err != nil {
 		return nil, err
 	}
@@ -581,7 +609,12 @@ func GetCustomizationSettings() (*CustomizationSettings, error) {
 	for results.Next() {
 		value := CustomizationSettings{}
 		//err = results.Scan(&value.Id, &value.IpAddress, &value.PrivateIpAddress, &value.LiveCallCount, &value.LiveCPUPCTUsed, &value.Status)
-		results.Scan(&value.InvoiceDueDateEnabled, &value.InvoiceDueNumDays, &value.BillingFrequency)
+		results.Scan(&value.InvoiceDueDateEnabled, 
+			&value.InvoiceDueNumDays,
+		    &value.BillingFrequency,
+			&value.CustomerSatisfactionSurveyEnabled,
+			&value.CustomerSatisfactionSurveyUrl,
+		)
 
 		return &value, nil
 	}
