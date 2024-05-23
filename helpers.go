@@ -340,6 +340,8 @@ type CustomizationSettings struct {
 	InvoiceDueDateEnabled             int    `json:"invoice_due_date_enabled"`
 	InvoiceDueNumDays             int    `json:"invoice_due_num_days"`
 	BillingFrequency             string    `json:"billing_frequency"`
+	CustomerSatisfactionSurveyEnabled   int    `json:"customer_satisfaction_survey_enabled"`
+	CustomerSatisfactionSurveyUrl   string    `json:"customer_satisfaction_survey_enabled"`
 }
 var db *sql.DB
 var rdb *redis.Client
@@ -573,7 +575,7 @@ func GetDIDFromDB(id int) (*DIDNumber, error) {
 }
 
 func GetCustomizationSettings() (*CustomizationSettings, error) {
-	results, err := db.Query("SELECT invoice_due_date_enabled, invoice_due_num_days, billing_frequency FROM customizations")
+	results, err := db.Query("SELECT invoice_due_date_enabled, invoice_due_num_days, billing_frequency, customer_satisfaction_survey_enabled, customer_satisfaction_survey_enabled FROM customizations")
 	if err != nil {
 		return nil, err
 	}
@@ -581,7 +583,12 @@ func GetCustomizationSettings() (*CustomizationSettings, error) {
 	for results.Next() {
 		value := CustomizationSettings{}
 		//err = results.Scan(&value.Id, &value.IpAddress, &value.PrivateIpAddress, &value.LiveCallCount, &value.LiveCPUPCTUsed, &value.Status)
-		results.Scan(&value.InvoiceDueDateEnabled, &value.InvoiceDueNumDays, &value.BillingFrequency)
+		results.Scan(&value.InvoiceDueDateEnabled, 
+			&value.InvoiceDueNumDays,
+		    &value.BillingFrequency,
+			&value.CustomerSatisfactionSurveyEnabled,
+			&value.CustomerSatisfactionSurveyUrl,
+		)
 
 		return &value, nil
 	}
