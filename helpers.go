@@ -143,12 +143,10 @@ type LogRoutine struct {
 type User struct {
 	Id       int    `json:"id"`
 	Username string `json:"username"`
-
 	FirstName string `json:"first_name"`
-
 	LastName string `json:"last_name"`
-
 	Email string `json:"email"`
+	StripeId string `json:"stripe_id"`
 }
 
 type Workspace struct {
@@ -498,8 +496,15 @@ func CalculateSTTCosts(recordingLength float64) float64 {
 }
 
 
-func CreateUser(userId int, username string, fname string, lname string, email string) (*User) {
-	return &User{Id: userId, Username: username, FirstName: fname, LastName: lname, Email: email};
+func CreateUser(userId int, username string, fname string, lname string, email string, stripeId string) (*User) {
+	return &User{
+		Id: userId, 
+		Username: username, 
+		FirstName: fname, 
+		LastName: lname, 
+		Email: email,
+		StripeId: stripeId,
+	};
 }
 
 func CreateWorkspace(workspaceId int, name string, creatorId int, outboundMacroId *int, plan string, billingCountryId *int, billingRegionId *int) (*Workspace) {
@@ -523,10 +528,11 @@ func GetUserFromDB(id int) (*User, error) {
 	var fname string
 	var lname string
 	var email string
+	var stripeId string
 	fmt.Printf("looking up user %d\r\n", id)
-	row := db.QueryRow(`SELECT id, username, first_name, last_name, email FROM users WHERE id=?`, id)
+	row := db.QueryRow(`SELECT id, username, first_name, last_name, email, stripe_id FROM users WHERE id=?`, id)
 
-	err := row.Scan(&userId, &username, &fname, &lname, &email)
+	err := row.Scan(&userId, &username, &fname, &lname, &email, &stripeId)
 	if err == sql.ErrNoRows { //create conference
 		return nil, err
 	}
@@ -534,7 +540,7 @@ func GetUserFromDB(id int) (*User, error) {
 		return nil, err
 	}
 
-	return CreateUser(userId, username, fname, lname, email), nil
+	return CreateUser(userId, username, fname, lname, email, stripeId), nil
 }
 
 func GetWorkspaceFromDB(id int) (*Workspace, error) {
