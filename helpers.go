@@ -954,7 +954,7 @@ func CheckFreeTrialStatus(plan string, started time.Time) string {
 	}
 	return "not-applicable"
 }
-func CheckIsMakingOutboundCallFirstTime(call Call) {
+func ProcessUsersFirstCall(call Call) {
 	var id string
 	row := db.QueryRow("SELECT id FROM `calls` WHERE `workspace_id` = ? AND `from` LIKE '?%s' AND `direction = 'outbound'", call.WorkspaceId, call.From, call.Direction)
 	err := row.Scan(&id)
