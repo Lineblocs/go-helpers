@@ -341,6 +341,28 @@ type CustomizationSettings struct {
 	CustomerSatisfactionSurveyEnabled   int    `json:"customer_satisfaction_survey_enabled"`
 	CustomerSatisfactionSurveyUrl   string    `json:"customer_satisfaction_survey_enabled"`
 }
+
+
+type CustomizationValue interface {
+}
+
+type CustomizationBooleanValue struct {
+	Value bool
+}
+
+type CustomizationStringValue struct {
+	Value string
+}
+
+type CustomizationNumberValue struct {
+	Value int
+}
+
+
+type CustomizationSettingsKV struct {
+	Pairs map[string]*CustomizationValue
+}
+
 var db *sql.DB
 var rdb *redis.Client
 
@@ -625,6 +647,42 @@ func GetCustomizationSettings() (*CustomizationSettings, error) {
 		return &value, nil
 	}
 	return nil, errors.New("fatal error: no customizations record exists")
+}
+
+func GetCustomizationKVs() (*CustomizationSettingsKV, error) {
+	results, err := db.Query("SELECT key, value_type, boolean_value, string_value, number_value FROM customizations")
+	if err != nil {
+		return nil, err
+	}
+	defer results.Close()
+	pairs := make(map[string]*CustomizationValue)
+	settings := CustomizationSettingsKV{}
+
+	var key string
+	var valueType string
+	var strValue string
+	var booleanValue bool
+	var numberValue int
+
+	for results.Next() {
+		results.Scan(&key,&valueType,&strValue,&numberValue)
+		var value CustomizationValue
+		switch valueType {
+			case "string": {
+					value = CustomizationStringValue{Value: strValue}
+			}
+			case "boolean": {
+					value = CustomizationBooleanValue{Value: booleanValue}
+			}
+			case"number": {
+					value = CustomizationNumberValue{Value: numberValue}
+			}
+		}
+		pairs[key] = &value
+	}
+
+	settings.Pairs = pairs
+	return &settings, nil
 }
 
 func GetRecordingSpace(id int) (int, error) {
