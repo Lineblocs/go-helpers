@@ -665,7 +665,7 @@ func GetCustomizationKVs() (*CustomizationSettingsKV, error) {
 	var numberValue int
 
 	for results.Next() {
-		results.Scan(&key,&valueType,&strValue,&numberValue)
+		results.Scan(&key,&valueType,&booleanValue,&strValue,&numberValue)
 		var value CustomizationValue
 		switch valueType {
 			case "string": {
