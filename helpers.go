@@ -14,7 +14,7 @@ import (
 	"database/sql"
 	"fmt"
 	"mime/multipart"
-	"reflect"
+	//"reflect"
 	"regexp"
 
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -566,31 +566,54 @@ func GetUserFromDB(id int) (*User, error) {
 }
 
 func GetWorkspaceFromDB(id int) (*Workspace, error) {
-	var workspaceId int
-	var name string
-	var creatorId int
-	var outboundMacroId sql.NullInt64
-	var plan string
-	var billingCountryId int
-	var billingRegionId int
-	row := db.QueryRow(`SELECT id, name, creator_id, outbound_macro_id, plan, billing_country_id, billing_region_id FROM workspaces WHERE id=?`, id)
+    var workspaceId int
+    var name string
+    var creatorId int
+    var plan string
+    
+    // Use the specific Null types for scanning
+    var outboundMacroId sql.NullInt64
+    var billingCountryId sql.NullInt64
+    var billingRegionId sql.NullInt64
 
-	err := row.Scan(&workspaceId, &name, &creatorId, &outboundMacroId, &plan, &billingCountryId, &billingRegionId)
-	if err == sql.ErrNoRows { //create conference
-		return nil, err
-	}
-	if err != nil { //another error
-		return nil, err
-	}
+    row := db.QueryRow(`
+        SELECT id, name, creator_id, outbound_macro_id, plan, billing_country_id, billing_region_id 
+        FROM workspaces WHERE id=?`, id)
 
-	var macroIdValue int
-	if reflect.TypeOf(outboundMacroId) == nil {
-		return CreateWorkspace(workspaceId, name, creatorId, &macroIdValue, plan, &billingCountryId, &billingRegionId), nil
-	}
+    err := row.Scan(
+        &workspaceId, 
+        &name, 
+        &creatorId, 
+        &outboundMacroId, 
+        &plan, 
+        &billingCountryId, 
+        &billingRegionId,
+    )
+    
+    if err == sql.ErrNoRows {
+        return nil, err
+    }
+    if err != nil {
+        return nil, err
+    }
 
-	macroIdValue = int(outboundMacroId.Int64)
-	return CreateWorkspace(workspaceId, name, creatorId, &macroIdValue, plan, &billingCountryId, &billingRegionId), nil
+    // Convert NullInt64 to standard int safely
+    // If it's NULL in DB, it becomes 0 in Go
+    macroVal := int(outboundMacroId.Int64)
+    countryVal := int(billingCountryId.Int64)
+    regionVal := int(billingRegionId.Int64)
+
+    return CreateWorkspace(
+        workspaceId, 
+        name, 
+        creatorId, 
+        &macroVal,    // Still passing as pointer if CreateWorkspace expects *int
+        plan, 
+        &countryVal, 
+        &regionVal,
+    ), nil
 }
+
 func GetCallFromDB(id int) (*Call, error) {
 	var callId int
 	var startedAt time.Time
