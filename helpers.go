@@ -732,7 +732,7 @@ func GetDIDFromDB(id int) (*DIDNumber, error) {
 	var number string
 	row := db.QueryRow(`SELECT id, number, monthly_cost, setup_cost FROM did_numbers WHERE id=?`, id)
 
-	err := row.Scan(&didId, &number, &monthlyCost, setupCost)
+	err := row.Scan(&didId, &number, &monthlyCost, &setupCost)
 	if err == sql.ErrNoRows { //create conference
 		return nil, err
 	}
