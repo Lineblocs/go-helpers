@@ -290,6 +290,20 @@ type ServicePlan struct {
 	PayAsYouGo bool `json:"pay_as_you_go"`
 }
 
+type Subscription struct {
+	Id                     int        `json:"id"`
+	CreatedAt              time.Time  `json:"created_at"`
+	UpdatedAt              time.Time  `json:"updated_at"`
+	WorkspaceId            int        `json:"workspace_id"`
+	CurrentPlanId          int        `json:"current_plan_id"`
+	BillingCycle           string     `json:"billing_cycle"`
+	Status                 string     `json:"status"`
+	CurrentPeriodEnd       time.Time  `json:"current_period_end"`
+	ScheduledPlanId        *int       `json:"scheduled_plan_id"`
+	ScheduledEffectiveDate *time.Time `json:"scheduled_effective_date"`
+	ProviderSubscriptionId *string    `json:"provider_subscription_id"`
+}
+
 type PlanValue struct {
 	Kind        string
 	ValueBool   bool
