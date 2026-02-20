@@ -1,4 +1,4 @@
-package lineblocs
+package helpers
 
 import (
 	"context"
@@ -162,17 +162,17 @@ type Workspace struct {
 }
 type UserCredit struct {
 	Id        int     `json:"id"`
-	Cents     float64 `json:"cents"`
+	Cents     int64 `json:"cents"`
 	CreatedAt string  `json:"created_at"`
 }
 type UserDebit struct {
 	Id        int     `json:"id"`
-	Cents     float64 `json:"cents"`
+	Cents     int64 `json:"cents"`
 	CreatedAt string  `json:"created_at"`
 }
 type UserInvoice struct {
 	Id        int     `json:"id"`
-	Cents     float64 `json:"cents"`
+	Cents     int64 `json:"cents"`
 	Source    string  `json:"source"`
 	Status    string  `json:"status"`
 	CreatedAt string  `json:"created_at"`
@@ -316,10 +316,10 @@ type PlanValue struct {
 type WorkspaceBillingInfo struct {
 	InvoiceDue            string
 	NextInvoiceDue        string
-	RemainingBalanceCents float64
-	ChargesThisMonth      float64
-	AccountBalance        float64
-	EstimatedBalance      float64
+	RemainingBalanceCents int64
+	ChargesThisMonth      int64
+	AccountBalance        int64
+	EstimatedBalance      int64
 }
 type BaseCosts struct {
 	RecordingsPerByte float64
@@ -1341,10 +1341,10 @@ func GetServicePlans2() ([]ServicePlan, error) {
 func GetWorkspaceBillingInfo(workspace *Workspace) (*WorkspaceBillingInfo, error) {
 	var info WorkspaceBillingInfo
 
-	remainingBalance := 0.0
-	chargesThisMonth := 0.0
-	accountBalance := 0.0
-	estimatedBalance := 0.0
+	var remainingBalance int64 = 0
+	var chargesThisMonth int64 = 0
+	var accountBalance int64 = 0
+	var estimatedBalance int64 = 0
 	results, err := db.Query(`SELECT id,cents,created_at FROM users_credits WHERE workspace_id = ?`, workspace.Id)
 
 	if err != nil {
