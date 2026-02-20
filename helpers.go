@@ -259,9 +259,10 @@ type GlobalSettings struct {
 
 type ServicePlan struct {
 	Name string `json:"name"`
+	KeyName string `json:"key_name"`
 	BaseCosts float64 `json:"base_costs"`
 	MinutesPerMonth float64 `json:"minutes_per_month"`
-	MonthlyChargeCents int `json:"monthly_charge_cents"`
+	MonthlyCostCents int `json:"monthly_cost_cents"`
 	AnnualCostCents int `json:"annual_cost_cents"`
 	Extensions int `json:"extensions"`
 	Ports int `json:"ports"`
@@ -1293,16 +1294,20 @@ func GetServicePlans() ([]ServicePlan, error) {
 }
 
 func GetServicePlans2() ([]ServicePlan, error) {
-	results, err := db.Query(`SELECT monthly_cost_cents, minutes_per_month, recording_space, extensions, im_integrations, voice_analytics, fraud_protection, crm_integrations, programmable_toolkit, sso, provisioner, vpn, multiple_sip_domains, bring_carrier, 247_support, ai_calls, pay_as_you_go, annual_cost_cents, monthly_charge_cents FROM service_plans`)
-    if err != nil {
-		return nil, err;
+
+	results, err := db.Query(`SELECT name, key_name, monthly_cost_cents, annual_cost_cents, minutes_per_month, recording_space, extensions, im_integrations, voice_analytics, fraud_protection, crm_integrations, programmable_toolkit, sso, provisioner, vpn, multiple_sip_domains, bring_carrier, 247_support, ai_calls, pay_as_you_go FROM service_plans`)
+	if err != nil {
+		return nil, err
 	}
 	defer results.Close()
 	plans := make([]ServicePlan, 0)
 	for results.Next() {
 		plan := ServicePlan{}
-		results.Scan(
-			&plan.BaseCosts,
+		err = results.Scan(
+			&plan.Name,
+			&plan.KeyName,
+			&plan.MonthlyCostCents,
+			&plan.AnnualCostCents,
 			&plan.MinutesPerMonth,
 			&plan.RecordingSpace,
 			&plan.Extensions,
@@ -1316,14 +1321,14 @@ func GetServicePlans2() ([]ServicePlan, error) {
 			&plan.Vpn,
 			&plan.MultipleSipDomains,
 			&plan.BringCarrier,
-			&plan.CallCenter,
 			&plan.TwentyFourSevenSupport,
 			&plan.AiCalls,
 			&plan.PayAsYouGo,
-			&plan.AnnualCostCents,
-			&plan.MonthlyChargeCents,
 		)
-		plans = append( plans, plan )
+		if err != nil {
+			return nil, err
+		}
+		plans = append(plans, plan)
 	}
 	return plans, nil
 }
