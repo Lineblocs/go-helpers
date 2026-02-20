@@ -558,6 +558,30 @@ func CreateWorkspace(workspaceId int, name string, creatorId int, outboundMacroI
 	return &workspace
 }
 
+func CreateSubscription(id int, createdAt time.Time, updatedAt time.Time, workspaceId int, currentPlanId int, billingCycle string, status string, currentPeriodEnd time.Time, scheduledPlanId *sql.NullInt64, scheduledEffectiveDate *sql.NullTime, providerSubscriptionId *sql.NullString) *Subscription {
+	subscription := Subscription{
+		Id:                     id,
+		CreatedAt:              createdAt,
+		UpdatedAt:              updatedAt,
+		WorkspaceId:            workspaceId,
+		CurrentPlanId:          currentPlanId,
+		BillingCycle:           billingCycle,
+		Status:                 status,
+		CurrentPeriodEnd:       currentPeriodEnd,
+	}
+	if scheduledPlanId != nil && scheduledPlanId.Valid {
+		val := int(scheduledPlanId.Int64)
+		subscription.ScheduledPlanId = &val
+	}
+	if scheduledEffectiveDate != nil && scheduledEffectiveDate.Valid {
+		subscription.ScheduledEffectiveDate = &scheduledEffectiveDate.Time
+	}
+	if providerSubscriptionId != nil && providerSubscriptionId.Valid {
+		subscription.ProviderSubscriptionId = &providerSubscriptionId.String
+	}
+	return &subscription
+}
+
 func GetUserFromDB(id int) (*User, error) {
 	var userId int
 	var username string
@@ -577,6 +601,59 @@ func GetUserFromDB(id int) (*User, error) {
 	}
 
 	return CreateUser(userId, username, fname, lname, email, stripeId), nil
+}
+
+func GetSubscriptionFromDB(id int) (*Subscription, error) {
+	var subId int
+	var createdAt time.Time
+	var updatedAt time.Time
+	var workspaceId int
+	var currentPlanId int
+	var billingCycle string
+	var status string
+	var currentPeriodEnd time.Time
+	var scheduledPlanId sql.NullInt64
+	var scheduledEffectiveDate sql.NullTime
+	var providerSubscriptionId sql.NullString
+	
+	row := db.QueryRow(`
+		SELECT id, created_at, updated_at, workspace_id, current_plan_id, billing_cycle, status, current_period_end, scheduled_plan_id, scheduled_effective_date, provider_subscription_id 
+		FROM subscriptions WHERE id=?`, id)
+
+	err := row.Scan(
+		&subId, 
+		&createdAt, 
+		&updatedAt, 
+		&workspaceId,
+		&currentPlanId,
+		&billingCycle,
+		&status,
+		&currentPeriodEnd,
+		&scheduledPlanId,
+		&scheduledEffectiveDate,
+		&providerSubscriptionId,
+	)
+	
+	if err == sql.ErrNoRows {
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return CreateSubscription(
+		subId, 
+		createdAt, 
+		updatedAt, 
+		workspaceId,
+		currentPlanId,
+		billingCycle,
+		status,
+		currentPeriodEnd,
+		&scheduledPlanId,
+		&scheduledEffectiveDate,
+		&providerSubscriptionId,
+	), nil
 }
 
 func GetWorkspaceFromDB(id int) (*Workspace, error) {
