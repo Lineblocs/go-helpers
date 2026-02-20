@@ -258,37 +258,38 @@ type GlobalSettings struct {
 }
 
 type ServicePlan struct {
-	Name string `json:"name"`
-	KeyName string `json:"key_name"`
-	BaseCosts float64 `json:"base_costs"`
-	MinutesPerMonth float64 `json:"minutes_per_month"`
-	MonthlyCostCents int `json:"monthly_cost_cents"`
-	AnnualCostCents int `json:"annual_cost_cents"`
-	Extensions int `json:"extensions"`
-	Ports int `json:"ports"`
-	Porting bool `json:"portiing"`
-	RecordingSpace float64 `json:"recording_space"`
-	Fax int `json:"fax"`
-	UnlimitedFax bool `json:"unlimited_fax"`
-	CallingBetweenExt bool `json:"calling_between_ext"`
-	StandardCallFeat bool `json:"standard_call_feat"`
-	VoicemailTranscriptions bool `json:"voicemail_transcriptions"`
-	ImIntegrations bool `json:"im_integrations"`
-	ProductivityIntegrations bool `json:"productivity_integrations"`
-	VoiceAnalytics bool `json:"voice_analytics"`
-	FraudProtection bool `json:"fraud_protection"`
-	CrmIntegrations bool `json:"crm_integrations"`
-	ProgrammableToolkit bool `json:"programmable_toolkit"`
-	Sso bool `json:"sso"`
-	Provisioner bool `json:"provisioner`
-	Vpn bool `json:"vpn"`
-	MultipleSipDomains bool `json:"multiple_sip_domains"`
-	BringCarrier bool `json:"bring_carrier"`
-	CallCenter bool `json:"call_center"`
-	Config247Support bool `json:"247_support"`
-	AiCalls bool `json:"ai_calls"`
-	TwentyFourSevenSupport bool `json:"247_support"`
-	PayAsYouGo bool `json:"pay_as_you_go"`
+	Id                       int     `json:"id"`
+	NiceName                 string  `json:"nice_name"`
+	KeyName                  string  `json:"key_name"`
+	BaseCosts                float64 `json:"base_costs"`
+	MinutesPerMonth          float64 `json:"minutes_per_month"`
+	MonthlyCostCents         int     `json:"monthly_cost_cents"`
+	AnnualCostCents          int     `json:"annual_cost_cents"`
+	Extensions               int     `json:"extensions"`
+	Ports                    int     `json:"ports"`
+	Porting                  bool    `json:"porting"`
+	RecordingSpace           float64 `json:"recording_space"`
+	Fax                      int     `json:"fax"`
+	UnlimitedFax             bool    `json:"unlimited_fax"`
+	CallingBetweenExt        bool    `json:"calling_between_ext"`
+	StandardCallFeat         bool    `json:"standard_call_feat"`
+	VoicemailTranscriptions  bool    `json:"voicemail_transcriptions"`
+	ImIntegrations           bool    `json:"im_integrations"`
+	ProductivityIntegrations bool    `json:"productivity_integrations"`
+	VoiceAnalytics           bool    `json:"voice_analytics"`
+	FraudProtection          bool    `json:"fraud_protection"`
+	CrmIntegrations          bool    `json:"crm_integrations"`
+	ProgrammableToolkit      bool    `json:"programmable_toolkit"`
+	Sso                      bool    `json:"sso"`
+	Provisioner              bool    `json:"provisioner"`
+	Vpn                      bool    `json:"vpn"`
+	MultipleSipDomains       bool    `json:"multiple_sip_domains"`
+	BringCarrier             bool    `json:"bring_carrier"`
+	CallCenter               bool    `json:"call_center"`
+	Config247Support         bool    `json:"247_support"`
+	AiCalls                  bool    `json:"ai_calls"`
+	TwentyFourSevenSupport   bool    `json:"247_support"`
+	PayAsYouGo               bool    `json:"pay_as_you_go"`
 }
 
 type Subscription struct {
@@ -1295,7 +1296,7 @@ func GetServicePlans() ([]ServicePlan, error) {
 
 func GetServicePlans2() ([]ServicePlan, error) {
 
-	results, err := db.Query(`SELECT name, key_name, monthly_cost_cents, annual_cost_cents, minutes_per_month, recording_space, extensions, im_integrations, voice_analytics, fraud_protection, crm_integrations, programmable_toolkit, sso, provisioner, vpn, multiple_sip_domains, bring_carrier, 247_support, ai_calls, pay_as_you_go FROM service_plans`)
+	results, err := db.Query(`SELECT id, nice_name, key_name, monthly_cost_cents, annual_cost_cents, minutes_per_month, recording_space, extensions, im_integrations, voice_analytics, fraud_protection, crm_integrations, programmable_toolkit, sso, provisioner, vpn, multiple_sip_domains, bring_carrier, 247_support, ai_calls, pay_as_you_go FROM service_plans`)
 	if err != nil {
 		return nil, err
 	}
@@ -1304,7 +1305,8 @@ func GetServicePlans2() ([]ServicePlan, error) {
 	for results.Next() {
 		plan := ServicePlan{}
 		err = results.Scan(
-			&plan.Name,
+			&plan.Id,
+			&plan.NiceName,
 			&plan.KeyName,
 			&plan.MonthlyCostCents,
 			&plan.AnnualCostCents,
@@ -1503,7 +1505,7 @@ func createPlan(name string, extras map[string]PlanValue) ServicePlan {
 		Config247Support:         false,
 		AiCalls:                  false}
 
-	plan.Name = name
+	plan.NiceName = name
 	if val, ok := extras["BaseCosts"]; ok {
 		//do something here
 		plan.BaseCosts = val.ValueFloat
