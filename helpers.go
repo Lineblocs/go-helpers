@@ -1304,6 +1304,7 @@ func GetServicePlans2() ([]ServicePlan, error) {
 	plans := make([]ServicePlan, 0)
 	for results.Next() {
 		plan := ServicePlan{}
+		var recordingSpace sql.NullString
 		err = results.Scan(
 			&plan.Id,
 			&plan.NiceName,
@@ -1311,7 +1312,7 @@ func GetServicePlans2() ([]ServicePlan, error) {
 			&plan.MonthlyCostCents,
 			&plan.AnnualCostCents,
 			&plan.MinutesPerMonth,
-			&plan.RecordingSpace,
+			&recordingSpace,
 			&plan.Extensions,
 			&plan.ImIntegrations,
 			&plan.VoiceAnalytics,
@@ -1329,6 +1330,9 @@ func GetServicePlans2() ([]ServicePlan, error) {
 		)
 		if err != nil {
 			return nil, err
+		}
+		if recordingSpace.Valid {
+			plan.RecordingSpace, _ = strconv.ParseFloat(recordingSpace.String, 64)
 		}
 		plans = append(plans, plan)
 	}
