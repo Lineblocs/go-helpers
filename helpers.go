@@ -766,7 +766,7 @@ func GetCustomizationSettings() (*CustomizationSettings, error) {
 }
 
 func GetCustomizationKVs() (*CustomizationSettingsKV, error) {
-	results, err := db.Query("SELECT key, value_type, boolean_value, string_value, number_value FROM customizations_kv_store")
+	results, err := db.Query("SELECT `key`, `value_type`, `boolean_value`, `string_value`, `number_value` FROM `customizations_kv_store`")
 	if err != nil {
 		return nil, err
 	}
