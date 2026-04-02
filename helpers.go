@@ -1656,6 +1656,12 @@ func UpdateRouterLiveStat(router *SIPRouter, stat string, value string) error {
 	return nil
 }
 
+func GenerateDeduplicationKey(source string, year int, month int, day int, workspaceId int, didId int) string {
+    key := fmt.Sprintf("%s_%d_%d_%d_%d_%d", source, year, month, day, workspaceId, didId)
+    Log(logrus.InfoLevel, fmt.Sprintf("Generated deduplication key: %s", key))
+    return key
+}
+
 func InitLogrus(logDestination string) {
 	log = logrus.New()
 	//Default Configure for console
