@@ -379,6 +379,28 @@ type CustomizationSettingsKV struct {
 	Pairs map[string]*CustomizationValue
 }
 
+type Settings struct {
+	AwsAccessKeyId           string `json:"aws_access_key_id"`
+	AwsSecretAccessKey       string `json:"aws_secret_access_key"`
+	AwsRegion                string `json:"aws_region"`
+	S3Bucket                string `json:"s3_bucket"`
+	StripePubKey             string `json:"stripe_pub_key"`
+	StripePrivateKey         string `json:"stripe_private_key"`
+	StripeTestPubKey         string `json:"stripe_test_pub_key"`
+	StripeTestPrivateKey     string `json:"stripe_test_private_key"`
+	StripeMode               string `json:"stripe_mode"`
+	SmtpHost                 string `json:"smtp_host"`
+	SmtpPort                 string `json:"smtp_port"`
+	SmtpUser                 string `json:"smtp_user"`
+	SmtpPassword             string `json:"smtp_password"`
+	SmtpTls                  string `json:"smtp_tls"`
+	GoogleServiceAccountJson string `json:"google_service_account_json"`
+}
+
+type APICredentials struct {
+	Credentials           map[string]string `json:"credentials"`
+}
+
 var db *sql.DB
 var rdb *redis.Client
 
@@ -806,6 +828,34 @@ func GetCustomizationKVs() (*CustomizationSettingsKV, error) {
 
 	settings.Pairs = pairs
 	return &settings, nil
+}
+
+func GetAPICredentials() (*APICredentials, error) {
+	db, err := CreateDBConn()
+	if err != nil {
+		fmt.Printf("could not create DB..")
+		fmt.Println(err)
+		return nil, err
+	}
+	results, err := db.Query("SELECT `key`, `string_value` FROM api_credentials_kv_store")
+	defer results.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	var key string
+	var value string
+	apiCreds := APICredentials{ Credentials: make(map[string]string) }
+	for results.Next() {
+		err := results.Scan(&key, &value)
+		if err != nil {
+			return nil, err
+		}
+
+		apiCreds.Credentials[key] = value
+	}
+
+	return &apiCreds, nil
 }
 
 func GetRecordingSpace(id int) (int, error) {
