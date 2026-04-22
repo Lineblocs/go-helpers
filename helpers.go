@@ -766,6 +766,13 @@ func GetCustomizationSettings() (*CustomizationSettings, error) {
 }
 
 func GetCustomizationKVs() (*CustomizationSettingsKV, error) {
+	db, err := CreateDBConn()
+	if err != nil {
+		fmt.Printf("could not create DB..")
+		fmt.Println(err)
+		return nil, err
+	}
+
 	results, err := db.Query("SELECT `key`, `value_type`, `boolean_value`, `string_value`, `number_value` FROM `customizations_kv_store`")
 	if err != nil {
 		return nil, err
