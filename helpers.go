@@ -1513,6 +1513,44 @@ func ChargeCustomer(user *User, workspace *Workspace, cents int, desc string) er
 	}
 	return nil
 }
+
+func IsWorkspaceSuspended(workspaceId int) (bool, error) {
+	gracePeriod := 7 * 24 * time.Hour // 7 days default
+	
+	rows, err := db.Query(`SELECT suspended_at, grace_period_extension FROM workspaces_suspensions WHERE workspace_id = ?`, workspaceId)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	
+	now := time.Now()
+	
+	for rows.Next() {
+		var suspendedAt time.Time
+		var gracePeriodExtension sql.NullInt64
+		
+		err := rows.Scan(&suspendedAt, &gracePeriodExtension)
+		if err != nil {
+			return false, err
+		}
+		
+		extension := int64(0)
+		if gracePeriodExtension.Valid {
+			extension = gracePeriodExtension.Int64
+		}
+		
+		totalGracePeriod := gracePeriod + time.Duration(extension)*time.Hour
+		
+		suspensionDeadline := suspendedAt.Add(totalGracePeriod)
+		
+		if now.After(suspensionDeadline) {
+			return true, nil
+		}
+	}
+	
+	return false, rows.Err()
+}
+
 func inMonth(created string, start time.Time, end time.Time) (bool, error) {
 	str := "2006-01-02T15:04:05Z"
 	check, err := time.Parse(str, created)
