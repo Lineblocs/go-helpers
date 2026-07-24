@@ -1,5 +1,4 @@
-//package helpers
-package main
+package helpers
 
 import (
 	"context"
