@@ -1,4 +1,5 @@
-package helpers
+//package helpers
+package main
 
 import (
 	"context"
@@ -304,6 +305,11 @@ type Subscription struct {
 	ScheduledPlanId        *int       `json:"scheduled_plan_id"`
 	ScheduledEffectiveDate *time.Time `json:"scheduled_effective_date"`
 	ProviderSubscriptionId *string    `json:"provider_subscription_id"`
+	IsFreeTrialActive      bool       `json:"is_free_trial_active"`
+	CancelAtPeriodEnd      bool       `json:"cancel_at_period_end"`
+	AutoTopupEnabled       bool       `json:"auto_topup_enabled"`
+	AutoTopupThreshold     int        `json:"auto_topup_threshold"`
+	AutoTopupAmount        int        `json:"auto_topup_amount"`
 }
 
 type PlanValue struct {
@@ -1755,6 +1761,63 @@ func GenerateDeduplicationKey(source string, year int, month int, day int, works
     key := fmt.Sprintf("%s_%d_%d_%d_%d_%d", source, year, month, day, workspaceId, didId)
     Log(logrus.InfoLevel, fmt.Sprintf("Generated deduplication key: %s", key))
     return key
+}
+
+func GetSubscription(workspaceId int) (*Subscription, error) {
+	db, err := CreateDBConn()
+	if err != nil {
+		fmt.Printf("could not create DB connection: %v\n", err)
+		return nil, err
+	}
+	defer db.Close()
+
+	query := `SELECT id, workspace_id, current_plan_id, billing_cycle, status, current_period_end, 
+	         next_billing_date, last_billed_at, last_charge_amount, scheduled_plan_id, 
+	         scheduled_effective_date, provider_subscription_id, created_at, updated_at, 
+	         billing_anchor_day, is_free_trial_active, free_trial_start_date, free_trial_end_date, 
+	         cancel_at_period_end, auto_topup_enabled, auto_topup_threshold, auto_topup_amount 
+	         FROM subscriptions WHERE workspace_id = ?`
+
+	row := db.QueryRow(query, workspaceId)
+
+	sub := &Subscription{}
+	var nextBillingDate sql.NullTime
+	var lastBilledAt sql.NullTime
+	var lastChargeAmount sql.NullFloat64
+	var scheduledPlanId sql.NullInt64
+	var scheduledEffectiveDate sql.NullTime
+	var providerSubscriptionId sql.NullString
+	var billingAnchorDay sql.NullInt64
+	var freeTrialStartDate sql.NullTime
+	var freeTrialEndDate sql.NullTime
+
+	err = row.Scan(&sub.Id, &sub.WorkspaceId, &sub.CurrentPlanId, &sub.BillingCycle, &sub.Status,
+		&sub.CurrentPeriodEnd, &nextBillingDate, &lastBilledAt, &lastChargeAmount,
+		&scheduledPlanId, &scheduledEffectiveDate, &providerSubscriptionId, &sub.CreatedAt,
+		&sub.UpdatedAt, &billingAnchorDay, &sub.IsFreeTrialActive, &freeTrialStartDate,
+		&freeTrialEndDate, &sub.CancelAtPeriodEnd, &sub.AutoTopupEnabled, &sub.AutoTopupThreshold,
+		&sub.AutoTopupAmount)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.New("subscription not found")
+		}
+		fmt.Printf("could not query subscription: %v\n", err)
+		return nil, err
+	}
+
+	if scheduledPlanId.Valid {
+		id := int(scheduledPlanId.Int64)
+		sub.ScheduledPlanId = &id
+	}
+	if scheduledEffectiveDate.Valid {
+		sub.ScheduledEffectiveDate = &scheduledEffectiveDate.Time
+	}
+	if providerSubscriptionId.Valid {
+		sub.ProviderSubscriptionId = &providerSubscriptionId.String
+	}
+
+	return sub, nil
 }
 
 func InitLogrus(logDestination string) {
