@@ -305,6 +305,7 @@ type Subscription struct {
 	ScheduledEffectiveDate *time.Time `json:"scheduled_effective_date"`
 	ProviderSubscriptionId *string    `json:"provider_subscription_id"`
 	IsFreeTrialActive      bool       `json:"is_free_trial_active"`
+	IsPayAsYouGo           bool       `json:"is_pay_as_you_go"`
 	CancelAtPeriodEnd      bool       `json:"cancel_at_period_end"`
 	AutoTopupEnabled       bool       `json:"auto_topup_enabled"`
 	AutoTopupThreshold     int        `json:"auto_topup_threshold"`
@@ -1774,8 +1775,11 @@ func GetSubscription(workspaceId int) (*Subscription, error) {
 	         next_billing_date, last_billed_at, last_charge_amount, scheduled_plan_id, 
 	         scheduled_effective_date, provider_subscription_id, created_at, updated_at, 
 	         billing_anchor_day, is_free_trial_active, free_trial_start_date, free_trial_end_date, 
-	         cancel_at_period_end, auto_topup_enabled, auto_topup_threshold, auto_topup_amount 
-	         FROM subscriptions WHERE workspace_id = ?`
+	         cancel_at_period_end, auto_topup_enabled, auto_topup_threshold, auto_topup_amount,
+	         service_plans.pay_as_you_go
+	         FROM subscriptions 
+	         INNER JOIN service_plans ON service_plans.id = subscriptions.current_plan_id
+	         WHERE workspace_id = ?`
 
 	row := db.QueryRow(query, workspaceId)
 
@@ -1789,13 +1793,14 @@ func GetSubscription(workspaceId int) (*Subscription, error) {
 	var billingAnchorDay sql.NullInt64
 	var freeTrialStartDate sql.NullTime
 	var freeTrialEndDate sql.NullTime
+	var payAsYouGo sql.NullBool
 
 	err = row.Scan(&sub.Id, &sub.WorkspaceId, &sub.CurrentPlanId, &sub.BillingCycle, &sub.Status,
 		&sub.CurrentPeriodEnd, &nextBillingDate, &lastBilledAt, &lastChargeAmount,
 		&scheduledPlanId, &scheduledEffectiveDate, &providerSubscriptionId, &sub.CreatedAt,
 		&sub.UpdatedAt, &billingAnchorDay, &sub.IsFreeTrialActive, &freeTrialStartDate,
 		&freeTrialEndDate, &sub.CancelAtPeriodEnd, &sub.AutoTopupEnabled, &sub.AutoTopupThreshold,
-		&sub.AutoTopupAmount)
+		&sub.AutoTopupAmount, &payAsYouGo)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
