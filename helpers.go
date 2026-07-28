@@ -746,7 +746,6 @@ func GetSubscriptionWithWorkspaceFromDB(workspaceId int) (*SubscriptionWithWorks
 	var subId int
 	var createdAt time.Time
 	var updatedAt time.Time
-	var subscriptionWorkspaceId int
 	var currentPlanId int
 	var billingCycle string
 	var status string
