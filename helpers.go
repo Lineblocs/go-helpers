@@ -312,6 +312,11 @@ type Subscription struct {
 	AutoTopupAmount        int        `json:"auto_topup_amount"`
 }
 
+type SubscriptionWithWorkspace struct {
+	Subscription *Subscription `json:"subscription"`
+	Workspace    *Workspace    `json:"workspace"`
+}
+
 type PlanValue struct {
 	Kind        string
 	ValueBool   bool
@@ -686,6 +691,8 @@ func GetSubscriptionFromDB(id int) (*Subscription, error) {
 	), nil
 }
 
+
+
 func GetWorkspaceFromDB(id int) (*Workspace, error) {
     var workspaceId int
     var name string
@@ -733,6 +740,99 @@ func GetWorkspaceFromDB(id int) (*Workspace, error) {
         &countryVal, 
         &regionVal,
     ), nil
+}
+
+func GetSubscriptionWithWorkspaceFromDB(subscriptionId int) (*SubscriptionWithWorkspace, error) {
+	var subId int
+	var createdAt time.Time
+	var updatedAt time.Time
+	var workspaceId int
+	var currentPlanId int
+	var billingCycle string
+	var status string
+	var currentPeriodEnd time.Time
+	var scheduledPlanId sql.NullInt64
+	var scheduledEffectiveDate sql.NullTime
+	var providerSubscriptionId sql.NullString
+	
+	var wsId int
+	var wsName string
+	var wsCreatorId int
+	var wsOutboundMacroId sql.NullInt64
+	var wsPlan string
+	var wsBillingCountryId sql.NullInt64
+	var wsBillingRegionId sql.NullInt64
+	
+	row := db.QueryRow(`
+		SELECT 
+			s.id, s.created_at, s.updated_at, s.workspace_id, s.current_plan_id, s.billing_cycle, s.status, s.current_period_end, s.scheduled_plan_id, s.scheduled_effective_date, s.provider_subscription_id,
+			w.id, w.name, w.creator_id, w.outbound_macro_id, w.plan, w.billing_country_id, w.billing_region_id
+		FROM subscriptions s
+		JOIN workspaces w ON w.id = s.workspace_id
+		WHERE s.id=?`, subscriptionId)
+	
+	err := row.Scan(
+		&subId, 
+		&createdAt, 
+		&updatedAt, 
+		&workspaceId,
+		&currentPlanId,
+		&billingCycle,
+		&status,
+		&currentPeriodEnd,
+		&scheduledPlanId,
+		&scheduledEffectiveDate,
+		&providerSubscriptionId,
+		&wsId,
+		&wsName,
+		&wsCreatorId,
+		&wsOutboundMacroId,
+		&wsPlan,
+		&wsBillingCountryId,
+		&wsBillingRegionId,
+	)
+	
+	if err == sql.ErrNoRows {
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
+	
+	// Create subscription
+	subscription := CreateSubscription(
+		subId, 
+		createdAt, 
+		updatedAt, 
+		workspaceId,
+		currentPlanId,
+		billingCycle,
+		status,
+		currentPeriodEnd,
+		&scheduledPlanId,
+		&scheduledEffectiveDate,
+		&providerSubscriptionId,
+	)
+	
+	// Create workspace
+	macroVal := int(wsOutboundMacroId.Int64)
+	countryVal := int(wsBillingCountryId.Int64)
+	regionVal := int(wsBillingRegionId.Int64)
+	
+	workspace := CreateWorkspace(
+		wsId,
+		wsName,
+		wsCreatorId,
+		&macroVal,
+		wsPlan,
+		&countryVal,
+		&regionVal,
+	)
+	
+	return &SubscriptionWithWorkspace{
+		Subscription: subscription,
+		Workspace:    workspace,
+	}, nil
 }
 
 func GetCallFromDB(id int) (*Call, error) {
