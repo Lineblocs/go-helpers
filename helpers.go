@@ -742,11 +742,11 @@ func GetWorkspaceFromDB(id int) (*Workspace, error) {
     ), nil
 }
 
-func GetSubscriptionWithWorkspaceFromDB(subscriptionId int) (*SubscriptionWithWorkspace, error) {
+func GetSubscriptionWithWorkspaceFromDB(workspaceId int) (*SubscriptionWithWorkspace, error) {
 	var subId int
 	var createdAt time.Time
 	var updatedAt time.Time
-	var workspaceId int
+	var subscriptionWorkspaceId int
 	var currentPlanId int
 	var billingCycle string
 	var status string
@@ -767,9 +767,9 @@ func GetSubscriptionWithWorkspaceFromDB(subscriptionId int) (*SubscriptionWithWo
 		SELECT 
 			s.id, s.created_at, s.updated_at, s.workspace_id, s.current_plan_id, s.billing_cycle, s.status, s.current_period_end, s.scheduled_plan_id, s.scheduled_effective_date, s.provider_subscription_id,
 			w.id, w.name, w.creator_id, w.outbound_macro_id, w.plan, w.billing_country_id, w.billing_region_id
-		FROM subscriptions s
-		JOIN workspaces w ON w.id = s.workspace_id
-		WHERE s.id=?`, subscriptionId)
+		FROM workspaces w
+		JOIN subscriptions s ON s.workspace_id = w.id
+		WHERE w.id=?`, workspaceId)
 	
 	err := row.Scan(
 		&subId, 
