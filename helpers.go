@@ -1874,7 +1874,6 @@ func GetSubscription(workspaceId int) (*Subscription, error) {
 		fmt.Printf("could not create DB connection: %v\n", err)
 		return nil, err
 	}
-	defer db.Close()
 
 	query := `SELECT subscriptions.id, subscriptions.workspace_id, subscriptions.current_plan_id, subscriptions.billing_cycle, subscriptions.status, subscriptions.current_period_end, 
 	         subscriptions.next_billing_date, subscriptions.last_billed_at, subscriptions.last_charge_amount, subscriptions.scheduled_plan_id, 
