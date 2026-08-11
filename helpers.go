@@ -704,11 +704,17 @@ func GetWorkspaceFromDB(id int) (*Workspace, error) {
     var billingCountryId sql.NullInt64
     var billingRegionId sql.NullInt64
 
+    // Use CreateDBConn to get a fresh connection
+    db, err := CreateDBConn()
+    if err != nil {
+        return nil, err
+    }
+
     row := db.QueryRow(`
         SELECT id, name, creator_id, outbound_macro_id, plan, billing_country_id, billing_region_id 
         FROM workspaces WHERE id=?`, id)
 
-    err := row.Scan(
+    err = row.Scan(
         &workspaceId, 
         &name, 
         &creatorId, 
