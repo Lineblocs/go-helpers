@@ -1876,15 +1876,15 @@ func GetSubscription(workspaceId int) (*Subscription, error) {
 	}
 	defer db.Close()
 
-	query := `SELECT id, workspace_id, current_plan_id, billing_cycle, status, current_period_end, 
-	         next_billing_date, last_billed_at, last_charge_amount, scheduled_plan_id, 
-	         scheduled_effective_date, provider_subscription_id, created_at, updated_at, 
-	         billing_anchor_day, is_free_trial_active, free_trial_start_date, free_trial_end_date, 
-	         cancel_at_period_end, auto_topup_enabled, auto_topup_threshold, auto_topup_amount,
+	query := `SELECT subscriptions.id, subscriptions.workspace_id, subscriptions.current_plan_id, subscriptions.billing_cycle, subscriptions.status, subscriptions.current_period_end, 
+	         subscriptions.next_billing_date, subscriptions.last_billed_at, subscriptions.last_charge_amount, subscriptions.scheduled_plan_id, 
+	         subscriptions.scheduled_effective_date, subscriptions.provider_subscription_id, subscriptions.created_at, subscriptions.updated_at, 
+	         subscriptions.billing_anchor_day, subscriptions.is_free_trial_active, subscriptions.free_trial_start_date, subscriptions.free_trial_end_date, 
+	         subscriptions.cancel_at_period_end, subscriptions.auto_topup_enabled, subscriptions.auto_topup_threshold, subscriptions.auto_topup_amount,
 	         service_plans.pay_as_you_go
 	         FROM subscriptions 
 	         INNER JOIN service_plans ON service_plans.id = subscriptions.current_plan_id
-	         WHERE workspace_id = ?`
+	         WHERE subscriptions.workspace_id = ?`
 
 	row := db.QueryRow(query, workspaceId)
 
