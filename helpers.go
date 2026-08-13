@@ -258,9 +258,14 @@ type GlobalSettings struct {
 }
 
 type ServicePlan struct {
-	Id                       int     `json:"id"`
-	NiceName                 string  `json:"nice_name"`
-	KeyName                  string  `json:"key_name"`
+	Id                          int        `json:"id"`
+	CreatedAt                   time.Time  `json:"created_at"`
+	UpdatedAt                   time.Time  `json:"updated_at"`
+	KeyName                     string     `json:"key_name"`
+	NiceName                    string     `json:"nice_name"`
+	Description                 string     `json:"description"`
+	CallDuration                string     `json:"call_duration"`
+	RecordingSpaceStr           string     `json:"recording_space_str"`
 	BaseCosts                float64 `json:"base_costs"`
 	MinutesPerMonth          float64 `json:"minutes_per_month"`
 	MonthlyCostCents         int     `json:"monthly_cost_cents"`
@@ -290,6 +295,28 @@ type ServicePlan struct {
 	AiCalls                  bool    `json:"ai_calls"`
 	TwentyFourSevenSupport   bool    `json:"247_support"`
 	PayAsYouGo               bool    `json:"pay_as_you_go"`
+	FeaturedPlan                bool       `json:"featured_plan"`
+	Benefits                    string     `json:"benefits"`
+	PayAsYouGoInt               int        `json:"pay_as_you_go_int"`
+	RegistrationPlan            int        `json:"registration_plan"`
+	IncludeInPricingPages       bool       `json:"include_in_pricing_pages"`
+	Rank                        int        `json:"rank"`
+	PlanTerm                    string     `json:"plan_term"`
+	AllowsAnnual                bool       `json:"allows_annual"`
+	AllowsMonthly               bool       `json:"allows_monthly"`
+	UnlimitedExtensions         bool       `json:"unlimited_extensions"`
+	DeletedAt                   *time.Time `json:"deleted_at"`
+	PaypalPlanId                *string    `json:"paypal_plan_id"`
+	PaypalAnnualPlanId          *string    `json:"paypal_annual_plan_id"`
+	Status                      string     `json:"status"`
+	FreeTrialExempt             bool       `json:"free_trial_exempt"`
+	AllowMultipleWorkspaceUsers bool       `json:"allow_multiple_workspace_users"`
+	TrialEndsOnPurchase         bool       `json:"trial_ends_on_purchase"`
+}
+
+type SubscriptionWithPlan struct {
+	Subscription *Subscription `json:"subscription"`
+	ServicePlan  *ServicePlan  `json:"service_plan"`
 }
 
 type Subscription struct {
@@ -638,7 +665,7 @@ func GetUserFromDB(id int) (*User, error) {
 	return CreateUser(userId, username, fname, lname, email, stripeId), nil
 }
 
-func GetSubscriptionFromDB(id int) (*Subscription, error) {
+func GetSubscriptionFromDB(id int) (*SubscriptionWithPlan, error) {
 	var subId int
 	var createdAt time.Time
 	var updatedAt time.Time
@@ -650,10 +677,59 @@ func GetSubscriptionFromDB(id int) (*Subscription, error) {
 	var scheduledPlanId sql.NullInt64
 	var scheduledEffectiveDate sql.NullTime
 	var providerSubscriptionId sql.NullString
-	
+
+	var planId int
+	var planCreatedAt time.Time
+	var planUpdatedAt time.Time
+	var planKeyName string
+	var planNiceName string
+	var planDescription string
+	var planCallDuration string
+	var planRecordingSpace string
+	var planFax bool
+	var planImIntegrations bool
+	var planProductivityIntegrations bool
+	var planVoiceAnalytics bool
+	var planFraudProtection bool
+	var planCrmIntegrations bool
+	var planProgrammableToolkit bool
+	var planSso bool
+	var planProvisioner bool
+	var planVpn bool
+	var planMultipleSipDomains bool
+	var planBringCarrier bool
+	var planFeaturedPlan bool
+	var planBenefits string
+	var planMonthlyChargeCents sql.NullInt64
+	var planPayAsYouGo sql.NullInt64
+	var planRegistrationPlan sql.NullInt64
+	var planIncludeInPricingPages bool
+	var planRank sql.NullInt64
+	var planPlanTerm string
+	var planAnnualCostCents int
+	var planAllowsAnnual bool
+	var planAllowsMonthly bool
+	var planBaseCosts sql.NullInt64
+	var planMinutesPerMonth sql.NullInt64
+	var planExtensions sql.NullInt64
+	var planUnlimitedExtensions bool
+	var planDeletedAt sql.NullTime
+	var planPaypalPlanId sql.NullString
+	var planPaypalAnnualPlanId sql.NullString
+	var planMonthlyCostCents int
+	var planConfig247Support bool
+	var planAiCalls bool
+	var planStatus string
+	var planFreeTrialExempt bool
+	var planAllowMultipleWorkspaceUsers bool
+	var planTrialEndsOnPurchase bool
+
 	row := db.QueryRow(`
-		SELECT id, created_at, updated_at, workspace_id, current_plan_id, billing_cycle, status, current_period_end, scheduled_plan_id, scheduled_effective_date, provider_subscription_id 
-		FROM subscriptions WHERE id=?`, id)
+		SELECT s.id, s.created_at, s.updated_at, s.workspace_id, s.current_plan_id, s.billing_cycle, s.status, s.current_period_end, s.scheduled_plan_id, s.scheduled_effective_date, s.provider_subscription_id,
+			p.id, p.created_at, p.updated_at, p.key_name, p.nice_name, p.description, p.call_duration, p.recording_space, p.fax, p.im_integrations, p.productivity_integrations, p.voice_analytics, p.fraud_protection, p.crm_integrations, p.programmable_toolkit, p.sso, p.provisioner, p.vpn, p.multiple_sip_domains, p.bring_carrier, p.featured_plan, p.benefits, p.monthly_charge_cents, p.pay_as_you_go, p.registration_plan, p.include_in_pricing_pages, p.rank, p.plan_term, p.annual_cost_cents, p.allows_annual, p.allows_monthly, p.base_costs, p.minutes_per_month, p.extensions, p.unlimited_extensions, p.deleted_at, p.paypal_plan_id, p.paypal_annual_plan_id, p.monthly_cost_cents, p.247_support, p.ai_calls, p.status, p.free_trial_exempt, p.allow_multiple_workspace_users, p.trial_ends_on_purchase
+		FROM subscriptions s
+		JOIN service_plans p ON p.id = s.current_plan_id
+		WHERE s.id=?`, id)
 
 	err := row.Scan(
 		&subId, 
@@ -667,6 +743,51 @@ func GetSubscriptionFromDB(id int) (*Subscription, error) {
 		&scheduledPlanId,
 		&scheduledEffectiveDate,
 		&providerSubscriptionId,
+		&planId,
+		&planCreatedAt,
+		&planUpdatedAt,
+		&planKeyName,
+		&planNiceName,
+		&planDescription,
+		&planCallDuration,
+		&planRecordingSpace,
+		&planFax,
+		&planImIntegrations,
+		&planProductivityIntegrations,
+		&planVoiceAnalytics,
+		&planFraudProtection,
+		&planCrmIntegrations,
+		&planProgrammableToolkit,
+		&planSso,
+		&planProvisioner,
+		&planVpn,
+		&planMultipleSipDomains,
+		&planBringCarrier,
+		&planFeaturedPlan,
+		&planBenefits,
+		&planMonthlyChargeCents,
+		&planPayAsYouGo,
+		&planRegistrationPlan,
+		&planIncludeInPricingPages,
+		&planRank,
+		&planPlanTerm,
+		&planAnnualCostCents,
+		&planAllowsAnnual,
+		&planAllowsMonthly,
+		&planBaseCosts,
+		&planMinutesPerMonth,
+		&planExtensions,
+		&planUnlimitedExtensions,
+		&planDeletedAt,
+		&planPaypalPlanId,
+		&planPaypalAnnualPlanId,
+		&planMonthlyCostCents,
+		&planConfig247Support,
+		&planAiCalls,
+		&planStatus,
+		&planFreeTrialExempt,
+		&planAllowMultipleWorkspaceUsers,
+		&planTrialEndsOnPurchase,
 	)
 	
 	if err == sql.ErrNoRows {
@@ -676,7 +797,7 @@ func GetSubscriptionFromDB(id int) (*Subscription, error) {
 		return nil, err
 	}
 
-	return CreateSubscription(
+	subscription := CreateSubscription(
 		subId, 
 		createdAt, 
 		updatedAt, 
@@ -688,7 +809,76 @@ func GetSubscriptionFromDB(id int) (*Subscription, error) {
 		&scheduledPlanId,
 		&scheduledEffectiveDate,
 		&providerSubscriptionId,
-	), nil
+	)
+
+	servicePlan := &ServicePlan{
+		Id:                          planId,
+		CreatedAt:                   planCreatedAt,
+		UpdatedAt:                   planUpdatedAt,
+		KeyName:                     planKeyName,
+		NiceName:                    planNiceName,
+		Description:                 planDescription,
+		CallDuration:                planCallDuration,
+		RecordingSpaceStr:           planRecordingSpace,
+		Fax:                         boolToInt(planFax),
+		ImIntegrations:              planImIntegrations,
+		ProductivityIntegrations:    planProductivityIntegrations,
+		VoiceAnalytics:              planVoiceAnalytics,
+		FraudProtection:             planFraudProtection,
+		CrmIntegrations:             planCrmIntegrations,
+		ProgrammableToolkit:         planProgrammableToolkit,
+		Sso:                         planSso,
+		Provisioner:                 planProvisioner,
+		Vpn:                         planVpn,
+		MultipleSipDomains:          planMultipleSipDomains,
+		BringCarrier:                planBringCarrier,
+		FeaturedPlan:                planFeaturedPlan,
+		Benefits:                    planBenefits,
+		RegistrationPlan:            int(planRegistrationPlan.Int64),
+		IncludeInPricingPages:       planIncludeInPricingPages,
+		Rank:                        int(planRank.Int64),
+		PlanTerm:                    planPlanTerm,
+		AnnualCostCents:             planAnnualCostCents,
+		AllowsAnnual:                planAllowsAnnual,
+		AllowsMonthly:               planAllowsMonthly,
+		BaseCosts:                   float64(planBaseCosts.Int64),
+		MinutesPerMonth:             float64(planMinutesPerMonth.Int64),
+		Extensions:                  int(planExtensions.Int64),
+		UnlimitedExtensions:         planUnlimitedExtensions,
+		MonthlyCostCents:            planMonthlyCostCents,
+		Config247Support:            planConfig247Support,
+		TwentyFourSevenSupport:      planConfig247Support,
+		AiCalls:                     planAiCalls,
+		Status:                      planStatus,
+		FreeTrialExempt:             planFreeTrialExempt,
+		AllowMultipleWorkspaceUsers: planAllowMultipleWorkspaceUsers,
+		TrialEndsOnPurchase:         planTrialEndsOnPurchase,
+		PayAsYouGoInt:               int(planPayAsYouGo.Int64),
+	}
+	if planDeletedAt.Valid {
+		servicePlan.DeletedAt = &planDeletedAt.Time
+	}
+	if planPaypalPlanId.Valid {
+		servicePlan.PaypalPlanId = &planPaypalPlanId.String
+	}
+	if planPaypalAnnualPlanId.Valid {
+		servicePlan.PaypalAnnualPlanId = &planPaypalAnnualPlanId.String
+	}
+	if planMonthlyChargeCents.Valid {
+		servicePlan.MonthlyCostCents = int(planMonthlyChargeCents.Int64)
+	}
+
+	return &SubscriptionWithPlan{
+		Subscription: subscription,
+		ServicePlan:  servicePlan,
+	}, nil
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 
