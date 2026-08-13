@@ -665,11 +665,10 @@ func GetUserFromDB(id int) (*User, error) {
 	return CreateUser(userId, username, fname, lname, email, stripeId), nil
 }
 
-func GetSubscriptionFromDB(id int) (*SubscriptionWithPlan, error) {
+func GetSubscriptionFromDB(workspaceId int) (*SubscriptionWithPlan, error) {
 	var subId int
 	var createdAt time.Time
 	var updatedAt time.Time
-	var workspaceId int
 	var currentPlanId int
 	var billingCycle string
 	var status string
@@ -729,7 +728,7 @@ func GetSubscriptionFromDB(id int) (*SubscriptionWithPlan, error) {
 			p.id, p.created_at, p.updated_at, p.key_name, p.nice_name, p.description, p.call_duration, p.recording_space, p.fax, p.im_integrations, p.productivity_integrations, p.voice_analytics, p.fraud_protection, p.crm_integrations, p.programmable_toolkit, p.sso, p.provisioner, p.vpn, p.multiple_sip_domains, p.bring_carrier, p.featured_plan, p.benefits, p.monthly_charge_cents, p.pay_as_you_go, p.registration_plan, p.include_in_pricing_pages, p.rank, p.plan_term, p.annual_cost_cents, p.allows_annual, p.allows_monthly, p.base_costs, p.minutes_per_month, p.extensions, p.unlimited_extensions, p.deleted_at, p.paypal_plan_id, p.paypal_annual_plan_id, p.monthly_cost_cents, p.247_support, p.ai_calls, p.status, p.free_trial_exempt, p.allow_multiple_workspace_users, p.trial_ends_on_purchase
 		FROM subscriptions s
 		JOIN service_plans p ON p.id = s.current_plan_id
-		WHERE s.id=?`, id)
+		WHERE s.workspace_id=?`, workspaceId)
 
 	err := row.Scan(
 		&subId, 
